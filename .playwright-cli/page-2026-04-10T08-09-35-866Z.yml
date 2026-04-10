@@ -1,0 +1,8 @@
+- generic [ref=e6]:
+  - generic [ref=e7]:
+    - heading "Spor" [level=1] [ref=e10]
+    - paragraph [ref=e11]: Suivez votre progression ensemble
+  - separator [ref=e12]
+  - generic [ref=e14]:
+    - button "Se connecter avec Google" [ref=e15]: Se connecter avec Google
+    - paragraph [ref=e17]: En continuant, vous acceptez nos conditions d'utilisation.

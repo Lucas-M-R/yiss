@@ -1,0 +1,90 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e74]:
+    - banner [ref=e75]:
+      - generic [ref=e76]: Spor
+      - link "a" [ref=e77] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e79]: a
+    - main [ref=e80]:
+      - generic [ref=e81]:
+        - generic [ref=e82]:
+          - paragraph [ref=e83]: Vendredi 10 avril
+          - heading "Bonjour, admin 👋" [level=2] [ref=e84]
+        - generic [ref=e85]:
+          - generic [ref=e86]:
+            - heading "Séance du jour" [level=3] [ref=e87]
+            - link "Ouvrir →" [ref=e88] [cursor=pointer]:
+              - /url: /session/2026-04-10
+          - link "Démarrer une séance Aucune séance enregistrée aujourd'hui" [ref=e89] [cursor=pointer]:
+            - /url: /session/2026-04-10
+            - generic [ref=e95]:
+              - paragraph [ref=e96]: Démarrer une séance
+              - paragraph [ref=e97]: Aucune séance enregistrée aujourd'hui
+        - generic [ref=e99]:
+          - heading "Cette semaine" [level=3] [ref=e100]
+          - generic [ref=e101]:
+            - link "Lu 6" [ref=e102] [cursor=pointer]:
+              - /url: /session/2026-04-06
+              - generic [ref=e103]: Lu
+              - generic [ref=e105]: "6"
+            - link "Ma 7" [ref=e106] [cursor=pointer]:
+              - /url: /session/2026-04-07
+              - generic [ref=e107]: Ma
+              - generic [ref=e109]: "7"
+            - link "Me 8" [ref=e110] [cursor=pointer]:
+              - /url: /session/2026-04-08
+              - generic [ref=e111]: Me
+              - generic [ref=e113]: "8"
+            - link "Je 9" [ref=e114] [cursor=pointer]:
+              - /url: /session/2026-04-09
+              - generic [ref=e115]: Je
+              - generic [ref=e117]: "9"
+            - link "Ve 10" [ref=e118] [cursor=pointer]:
+              - /url: /session/2026-04-10
+              - generic [ref=e119]: Ve
+              - generic [ref=e121]: "10"
+            - link "Sa 11" [ref=e122] [cursor=pointer]:
+              - /url: /session/2026-04-11
+              - generic [ref=e123]: Sa
+              - generic [ref=e125]: "11"
+            - link "Di 12" [ref=e126] [cursor=pointer]:
+              - /url: /session/2026-04-12
+              - generic [ref=e127]: Di
+              - generic [ref=e129]: "12"
+        - generic [ref=e130]:
+          - heading "Ce mois-ci" [level=3] [ref=e131]
+          - generic [ref=e132]:
+            - generic [ref=e137]:
+              - paragraph [ref=e138]: "0"
+              - paragraph [ref=e139]: Séances
+            - generic [ref=e144]:
+              - paragraph [ref=e145]: "0"
+              - paragraph [ref=e146]: 7 derniers jours
+        - generic [ref=e147]:
+          - heading "Dernières séances" [level=3] [ref=e148]
+          - paragraph [ref=e154]: Aucune séance enregistrée.
+    - navigation [ref=e155]:
+      - link "Accueil" [ref=e156] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e158]: Accueil
+      - link "Séances" [ref=e159] [cursor=pointer]:
+        - /url: /session/2026-04-10
+        - generic [ref=e161]: Séances
+      - link "Stats" [ref=e162] [cursor=pointer]:
+        - /url: /stats
+        - generic [ref=e164]: Stats
+      - link "Paramètres" [ref=e165] [cursor=pointer]:
+        - /url: /settings
+        - generic [ref=e167]: Paramètres
+  - generic:
+    - img
+  - generic [ref=e31]:
+    - img [ref=e32]
+    - img [ref=e34]
+    - img [ref=e37]
+    - generic:
+      - button "Unauthorized":
+        - generic:
+          - generic: Unauthorized
+  - region "Notifications (F8)":
+    - list

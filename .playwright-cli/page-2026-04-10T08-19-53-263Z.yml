@@ -1,0 +1,28 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - heading "Spor" [level=1] [ref=e10]
+      - paragraph [ref=e11]: Suivez votre progression ensemble
+    - separator [ref=e12]
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - generic [ref=e18]: Email
+        - textbox "Email" [ref=e21]:
+          - /placeholder: vous@exemple.com
+      - generic [ref=e22]:
+        - generic [ref=e25]: Mot de passe
+        - textbox "Mot de passe" [ref=e28]:
+          - /placeholder: ••••••••
+      - button "Se connecter" [ref=e29]
+  - generic:
+    - img
+  - generic [ref=e31]:
+    - img [ref=e32]
+    - img [ref=e34]
+    - img [ref=e37]
+    - generic:
+      - button "Unauthorized":
+        - generic:
+          - generic: Unauthorized
+  - region "Notifications (F8)":
+    - list

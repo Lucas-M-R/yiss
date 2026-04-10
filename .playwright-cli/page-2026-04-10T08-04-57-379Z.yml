@@ -1,0 +1,21 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - heading "Spor" [level=1] [ref=e10]
+      - paragraph [ref=e11]: Suivez votre progression ensemble
+    - separator
+    - generic [ref=e12]:
+      - button "Se connecter avec Google" [ref=e13]: Se connecter avec Google
+      - paragraph [ref=e15]: En continuant, vous acceptez nos conditions d'utilisation.
+  - region "Notifications (F8)":
+    - list
+  - generic:
+    - img
+  - generic [ref=e17]:
+    - img [ref=e18]
+    - img [ref=e20]
+    - img [ref=e23]
+    - generic:
+      - button "Unauthorized":
+        - generic:
+          - generic: Unauthorized
