@@ -21,6 +21,8 @@ export default defineEventHandler(async (event) => {
 
   await setUserSession(event, {
     user: { id: email, email, name, avatar: null }
+  }, {
+    maxAge: 60 * 60 * 24 * 30 // 30 jours
   })
 
   return { ok: true }

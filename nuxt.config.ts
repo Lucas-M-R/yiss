@@ -15,6 +15,7 @@ export default defineNuxtConfig({
     authEmail: '',
     authPassword: '',
     supabaseServiceKey: '',
+    resendApiKey: '',
     oauth: {
       google: {
         clientId: '',

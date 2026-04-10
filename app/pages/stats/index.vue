@@ -126,7 +126,7 @@ const {
   refresh: refreshStats,
 } = await useFetch<StatRow[]>('/api/stats', { query: statsQuery })
 
-watch(statsQuery, () => refreshStats())
+// useFetch auto-watches the reactive query — no manual watch needed
 
 // ---------------------------------------------------------------------------
 // Summary cards (only when exercise is selected)
@@ -431,20 +431,22 @@ const hasChartData = computed(() => (stats.value ?? []).length > 0)
               <p class="text-sm font-semibold text-zinc-300">Charge max (kg)</p>
             </template>
             <div class="h-[250px] md:h-[350px]">
-              <Line
-                :data="lineChartData"
-                :options="{
-                  ...chartDefaults,
-                  plugins: {
-                    ...chartDefaults.plugins,
-                    legend: { ...chartDefaults.plugins.legend, display: !!partner },
-                  },
-                  scales: {
-                    x: { ...chartDefaults.scales.x, type: 'category' },
-                    y: { ...chartDefaults.scales.y, beginAtZero: false },
-                  },
-                }"
-              />
+              <ClientOnly>
+                <Line
+                  :data="lineChartData"
+                  :options="{
+                    ...chartDefaults,
+                    plugins: {
+                      ...chartDefaults.plugins,
+                      legend: { ...chartDefaults.plugins.legend, display: !!partner },
+                    },
+                    scales: {
+                      x: { ...chartDefaults.scales.x, type: 'category' },
+                      y: { ...chartDefaults.scales.y, beginAtZero: false },
+                    },
+                  }"
+                />
+              </ClientOnly>
             </div>
           </UCard>
 
@@ -454,20 +456,22 @@ const hasChartData = computed(() => (stats.value ?? []).length > 0)
               <p class="text-sm font-semibold text-zinc-300">Volume par séance (kg)</p>
             </template>
             <div class="h-[250px] md:h-[350px]">
-              <Bar
-                :data="barChartData"
-                :options="{
-                  ...chartDefaults,
-                  plugins: {
-                    ...chartDefaults.plugins,
-                    legend: { ...chartDefaults.plugins.legend, display: !!partner },
-                  },
-                  scales: {
-                    x: { ...chartDefaults.scales.x, type: 'category', stacked: false },
-                    y: { ...chartDefaults.scales.y, beginAtZero: true },
-                  },
-                }"
-              />
+              <ClientOnly>
+                <Bar
+                  :data="barChartData"
+                  :options="{
+                    ...chartDefaults,
+                    plugins: {
+                      ...chartDefaults.plugins,
+                      legend: { ...chartDefaults.plugins.legend, display: !!partner },
+                    },
+                    scales: {
+                      x: { ...chartDefaults.scales.x, type: 'category', stacked: false },
+                      y: { ...chartDefaults.scales.y, beginAtZero: true },
+                    },
+                  }"
+                />
+              </ClientOnly>
             </div>
           </UCard>
         </template>

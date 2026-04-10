@@ -105,6 +105,7 @@ const exerciseSearch = ref('')
 const selectedExerciseId = ref<string | null>(null)
 const newSetsCount = ref(3)
 const addingExercise = ref(false)
+const creatingExercise = ref(false)
 
 // Program selection for new session
 const programs = ref<Program[]>([])
@@ -153,6 +154,10 @@ const filteredExercises = computed(() => {
 
 const exerciseOptions = computed(() =>
   filteredExercises.value.map(e => ({ label: e.name, value: e.id }))
+)
+
+const canCreateExercise = computed(() =>
+  exerciseSearch.value.trim().length > 0 && filteredExercises.value.length === 0
 )
 
 // ---------------------------------------------------------------------------
@@ -218,6 +223,23 @@ async function startSession() {
 async function openAddModal() {
   showAddModal.value = true
   if (!allExercises.value.length) await fetchExercises()
+}
+
+async function createExerciseFromSearch() {
+  const name = exerciseSearch.value.trim()
+  if (!name) return
+  creatingExercise.value = true
+  try {
+    const created = await $fetch<Exercise>('/api/exercises', {
+      method: 'POST',
+      body: { name, category: 'strength' }
+    })
+    allExercises.value.push(created)
+    selectedExerciseId.value = created.id
+    exerciseSearch.value = ''
+  } finally {
+    creatingExercise.value = false
+  }
 }
 
 function closeAddModal() {
@@ -302,16 +324,8 @@ function isCardio(exercise: SessionExercise): boolean {
   return exercise.exercise?.category?.toLowerCase() === 'cardio'
 }
 
-function scheduleSave(
-  sessionExerciseId: string,
-  setNumber: number,
-  field: string,
-  value: unknown
-) {
-  const userId = me.value?.id
-  if (!userId) return
-
-  const key = `${sessionExerciseId}-${userId}-${setNumber}-${field}`
+function scheduleSave(sessionExerciseId: string, setNumber: number, userId: string) {
+  const key = `${sessionExerciseId}-${userId}-${setNumber}`
 
   if (saveTimers.has(key)) {
     clearTimeout(saveTimers.get(key)!)
@@ -321,52 +335,49 @@ function scheduleSave(
     key,
     setTimeout(async () => {
       saveTimers.delete(key)
-      await saveSet(sessionExerciseId, setNumber, field, value)
+      await saveSet(sessionExerciseId, setNumber, userId)
     }, 800)
   )
 }
 
-async function saveSet(
-  sessionExerciseId: string,
-  setNumber: number,
-  field: string,
-  value: unknown
-) {
-  const userId = me.value?.id
-  if (!userId) return
-
+async function saveSet(sessionExerciseId: string, setNumber: number, userId: string) {
   const key = `${sessionExerciseId}-${userId}-${setNumber}`
   saving.value = new Set([...saving.value, key])
 
   try {
+    const ex = sessionData.value?.session?.exercises?.find(e => e.id === sessionExerciseId)
+    const currentSet = ex?.sets?.find(s => s.user_id === userId && s.set_number === setNumber)
+
     const result = await $fetch<SessionSet>('/api/sets', {
       method: 'POST',
       body: {
         session_exercise_id: sessionExerciseId,
         set_number: setNumber,
-        [field]: value === '' ? null : value
+        user_id: userId,
+        reps: currentSet?.reps ?? null,
+        weight_kg: currentSet?.weight_kg ?? null,
+        duration_sec: currentSet?.duration_sec ?? null,
+        rest_sec: currentSet?.rest_sec ?? null,
       }
     })
 
-    // Update local set data
-    if (sessionData.value?.session) {
-      const ex = sessionData.value.session.exercises.find(e => e.id === sessionExerciseId)
-      if (ex) {
-        const idx = ex.sets.findIndex(s => s.user_id === userId && s.set_number === setNumber)
-        if (idx >= 0) {
-          ex.sets[idx] = result
-        } else {
-          ex.sets.push(result)
-        }
+    if (ex) {
+      const idx = ex.sets.findIndex(s => s.user_id === userId && s.set_number === setNumber)
+      if (idx >= 0) {
+        ex.sets[idx] = result
+      } else {
+        ex.sets.push(result)
       }
     }
 
-    // Green flash
-    saved.value = new Set([...saved.value, key])
-    setTimeout(() => {
-      saved.value.delete(key)
-      saved.value = new Set(saved.value)
-    }, 1200)
+    // Green flash (only for me)
+    if (userId === me.value?.id) {
+      saved.value = new Set([...saved.value, key])
+      setTimeout(() => {
+        saved.value.delete(key)
+        saved.value = new Set(saved.value)
+      }, 1200)
+    }
   } finally {
     saving.value.delete(key)
     saving.value = new Set(saving.value)
@@ -416,41 +427,67 @@ function displayToSec(value: string): number | null {
 function onStrengthInput(
   sessionExerciseId: string,
   setNumber: number,
+  userId: string,
   field: 'reps' | 'weight_kg',
   rawValue: string
 ) {
   const parsed = rawValue === '' ? null : (field === 'weight_kg' ? parseFloat(rawValue) : parseInt(rawValue, 10))
-  // Optimistic local update
-  if (sessionData.value?.session && me.value) {
+  const value = parsed === null || isNaN(parsed as number) ? null : parsed
+
+  // Optimistic update — access through reactive proxy to trigger Vue reactivity
+  if (sessionData.value?.session) {
     const ex = sessionData.value.session.exercises.find(e => e.id === sessionExerciseId)
     if (ex) {
-      let set = ex.sets.find(s => s.user_id === me.value!.id && s.set_number === setNumber)
-      if (!set) {
-        set = {
+      let idx = ex.sets.findIndex(s => s.user_id === userId && s.set_number === setNumber)
+      if (idx === -1) {
+        ex.sets.push({
           id: '',
           session_exercise_id: sessionExerciseId,
-          user_id: me.value.id,
+          user_id: userId,
           set_number: setNumber,
           reps: null,
           weight_kg: null,
           duration_sec: null,
           rest_sec: null
-        }
-        ex.sets.push(set)
+        })
+        idx = ex.sets.length - 1
       }
-      ;(set as Record<string, unknown>)[field] = isNaN(parsed as number) ? null : parsed
+      ;(ex.sets[idx] as Record<string, unknown>)[field] = value
     }
   }
-  scheduleSave(sessionExerciseId, setNumber, field, isNaN(parsed as number) ? null : parsed)
+  scheduleSave(sessionExerciseId, setNumber, userId)
 }
 
 function onCardioInput(
   sessionExerciseId: string,
   setNumber: number,
+  userId: string,
   rawValue: string
 ) {
   const sec = displayToSec(rawValue)
-  scheduleSave(sessionExerciseId, setNumber, 'duration_sec', sec)
+
+  // Optimistic update — access through reactive proxy
+  if (sessionData.value?.session) {
+    const ex = sessionData.value.session.exercises.find(e => e.id === sessionExerciseId)
+    if (ex) {
+      let idx = ex.sets.findIndex(s => s.user_id === userId && s.set_number === setNumber)
+      if (idx === -1) {
+        ex.sets.push({
+          id: '',
+          session_exercise_id: sessionExerciseId,
+          user_id: userId,
+          set_number: setNumber,
+          reps: null,
+          weight_kg: null,
+          duration_sec: null,
+          rest_sec: null
+        })
+        idx = ex.sets.length - 1
+      }
+      ex.sets[idx].duration_sec = sec
+    }
+  }
+  scheduleSave(sessionExerciseId, setNumber, userId)
 }
 </script>
 
@@ -488,7 +525,8 @@ function onCardioInput(
             <p class="text-xs text-zinc-400 text-left">Charger un programme (optionnel)</p>
             <USelect
               v-model="selectedProgramDayId"
-              :options="[{ label: 'Séance libre', value: null }, ...programDayOptions]"
+              :items="[{ label: 'Séance libre', value: null }, ...programDayOptions]"
+              value-key="value"
               placeholder="Choisir un jour de programme"
               color="neutral"
               class="w-full"
@@ -631,7 +669,7 @@ function onCardioInput(
                       :value="getSet(ex.id, me.id, n)?.reps ?? ''"
                       placeholder="—"
                       class="w-14 text-center bg-zinc-800 border border-zinc-700 rounded text-white text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
-                      @input="onStrengthInput(ex.id, n, 'reps', ($event.target as HTMLInputElement).value)"
+                      @input="onStrengthInput(ex.id, n, me.id, 'reps', ($event.target as HTMLInputElement).value)"
                     />
                   </td>
                   <!-- Me: weight -->
@@ -644,21 +682,34 @@ function onCardioInput(
                       :value="getSet(ex.id, me.id, n)?.weight_kg ?? ''"
                       placeholder="kg"
                       class="w-16 text-center bg-zinc-800 border border-zinc-700 rounded text-white text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
-                      @input="onStrengthInput(ex.id, n, 'weight_kg', ($event.target as HTMLInputElement).value)"
+                      @input="onStrengthInput(ex.id, n, me.id, 'weight_kg', ($event.target as HTMLInputElement).value)"
                     />
                   </td>
 
-                  <!-- Partner: reps (read-only display) -->
+                  <!-- Partner: reps (editable) -->
                   <td v-if="partner" class="px-2 py-1.5 text-center">
-                    <span class="text-xs text-zinc-400 tabular-nums">
-                      {{ getSet(ex.id, partner.id, n)?.reps ?? '—' }}
-                    </span>
+                    <input
+                      type="number"
+                      inputmode="numeric"
+                      min="0"
+                      :value="getSet(ex.id, partner.id, n)?.reps ?? ''"
+                      placeholder="—"
+                      class="w-14 text-center bg-zinc-800 border border-zinc-700 rounded text-zinc-300 text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50"
+                      @input="onStrengthInput(ex.id, n, partner.id, 'reps', ($event.target as HTMLInputElement).value)"
+                    />
                   </td>
-                  <!-- Partner: weight (read-only display) -->
+                  <!-- Partner: weight (editable) -->
                   <td v-if="partner" class="px-2 py-1.5 text-center">
-                    <span class="text-xs text-zinc-400 tabular-nums">
-                      {{ getSet(ex.id, partner.id, n)?.weight_kg != null ? getSet(ex.id, partner.id, n)!.weight_kg + ' kg' : '—' }}
-                    </span>
+                    <input
+                      type="number"
+                      inputmode="decimal"
+                      min="0"
+                      step="0.5"
+                      :value="getSet(ex.id, partner.id, n)?.weight_kg ?? ''"
+                      placeholder="kg"
+                      class="w-16 text-center bg-zinc-800 border border-zinc-700 rounded text-zinc-300 text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50"
+                      @input="onStrengthInput(ex.id, n, partner.id, 'weight_kg', ($event.target as HTMLInputElement).value)"
+                    />
                   </td>
                 </template>
 
@@ -672,14 +723,19 @@ function onCardioInput(
                       :value="secToDisplay(getSet(ex.id, me.id, n)?.duration_sec ?? null)"
                       placeholder="MM:SS"
                       class="w-20 text-center bg-zinc-800 border border-zinc-700 rounded text-white text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
-                      @change="onCardioInput(ex.id, n, ($event.target as HTMLInputElement).value)"
+                      @change="onCardioInput(ex.id, n, me.id, ($event.target as HTMLInputElement).value)"
                     />
                   </td>
-                  <!-- Partner: duration (read-only) -->
+                  <!-- Partner: duration (editable) -->
                   <td v-if="partner" class="px-2 py-1.5 text-center" colspan="2">
-                    <span class="text-xs text-zinc-400 tabular-nums">
-                      {{ secToDisplay(getSet(ex.id, partner.id, n)?.duration_sec ?? null) || '—' }}
-                    </span>
+                    <input
+                      type="text"
+                      inputmode="numeric"
+                      :value="secToDisplay(getSet(ex.id, partner.id, n)?.duration_sec ?? null)"
+                      placeholder="MM:SS"
+                      class="w-20 text-center bg-zinc-800 border border-zinc-700 rounded text-zinc-300 text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50"
+                      @change="onCardioInput(ex.id, n, partner.id, ($event.target as HTMLInputElement).value)"
+                    />
                   </td>
                 </template>
               </tr>
@@ -727,12 +783,25 @@ function onCardioInput(
           <div class="space-y-1.5">
             <label class="text-xs text-zinc-400 font-medium">Exercice</label>
             <USelect
+              v-if="!canCreateExercise"
               v-model="selectedExerciseId"
-              :options="exerciseOptions"
+              :items="exerciseOptions"
+              value-key="value"
               placeholder="Sélectionner un exercice"
               color="neutral"
               class="w-full"
             />
+            <UButton
+              v-else
+              icon="i-lucide-plus"
+              color="violet"
+              variant="outline"
+              class="w-full"
+              :loading="creatingExercise"
+              @click="createExerciseFromSearch"
+            >
+              Ajouter « {{ exerciseSearch.trim() }} »
+            </UButton>
           </div>
 
           <div class="space-y-1.5">

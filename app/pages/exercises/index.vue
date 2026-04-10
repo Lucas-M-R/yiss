@@ -164,7 +164,8 @@ async function deleteExercise(id: string) {
           <UFormField label="Catégorie">
             <USelect
               v-model="form.category"
-              :options="categoryOptions"
+              :items="categoryOptions"
+              value-key="value"
               class="w-full"
             />
           </UFormField>

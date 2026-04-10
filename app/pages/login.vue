@@ -47,6 +47,20 @@ async function login() {
 
       <USeparator class="w-full" />
 
+      <!-- Google OAuth -->
+      <UButton
+        size="lg"
+        class="w-full justify-center gap-3"
+        color="neutral"
+        variant="solid"
+        @click="navigateTo('/auth/google', { external: true })"
+      >
+        <UIcon name="i-logos-google-icon" class="text-lg" />
+        Se connecter avec Google
+      </UButton>
+
+      <USeparator class="w-full" label="ou" />
+
       <form class="w-full space-y-4" @submit.prevent="login">
         <UFormField label="Email">
           <UInput

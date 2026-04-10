@@ -16,7 +16,7 @@ export default defineOAuthGoogleEventHandler({
         name: user.name,
         avatar: user.picture
       }
-    })
+    }, { maxAge: 60 * 60 * 24 * 30 })
     return sendRedirect(event, '/')
   },
   onError(event, error) {
