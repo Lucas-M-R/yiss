@@ -1,10 +1,36 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'auth',
-  middleware: []
+  auth: false
 })
 
+const route = useRoute()
 const { loggedIn, fetch: fetchSession } = useUserSession()
+
+// Gérer la vérification du magic link si un token est présent
+const verifyingToken = ref(false)
+const verificationError = ref('')
+
+onMounted(async () => {
+  const token = route.query.token as string
+
+  if (token) {
+    verifyingToken.value = true
+    try {
+      await $fetch('/api/auth/verify-magic-link', {
+        method: 'POST',
+        body: { token }
+      })
+      await fetchSession()
+      await navigateTo('/')
+    } catch (err: any) {
+      verificationError.value = err.data?.message || 'Lien de connexion invalide ou expiré'
+      verifyingToken.value = false
+      // Retirer le token de l'URL
+      await navigateTo('/login', { replace: true })
+    }
+  }
+})
 
 if (loggedIn.value) {
   await navigateTo('/')

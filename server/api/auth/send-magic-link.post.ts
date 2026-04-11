@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
 
   // Construire l'URL de vérification
   const baseUrl = config.public.appUrl || getRequestURL(event).origin
-  const magicLink = `${baseUrl}/auth/verify?token=${token}`
+  const magicLink = `${baseUrl}/login?token=${token}`
 
   // Envoyer l'email via Resend
   const resend = new Resend(config.resendApiKey)

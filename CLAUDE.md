@@ -82,24 +82,25 @@ NUXT_OAUTH_GOOGLE_CLIENT_SECRET=
 
 ## État actuel (avril 2026)
 
-### Ce qui fonctionne
-- **Auth multiple** :
-  - Email/password simple (dev)
-  - Magic link par email (Resend) — ✅ NOUVEAU
-  - Google OAuth (problème sur Firefox)
+### Ce qui fonctionne ✅
+- **Auth complète** :
+  - **Magic link par email** (Resend) — Le lien pointe vers `/login?token=...` pour éviter les problèmes de routing SSR
+  - **Email + mot de passe** (bcrypt) — L'utilisateur peut définir un mot de passe dans les paramètres
+  - Google OAuth (problème sur Firefox, désactivé)
+- **Storage des magic links** : Filesystem storage (`.data/magic-links/`) avec TTL de 15 minutes
+- **Gestion des mots de passe** : Hachage bcrypt, API `/api/auth/set-password` pour définir/changer le mot de passe
 - Styles Nuxt UI + Tailwind v4 correctement chargés
 - Layout auth (login centré) + layout default (header + bottom nav)
 - Connexion Supabase établie (credentials dans .env)
 - Structure complète des pages et API
+- Migration Supabase appliquée : colonne `password_hash` dans la table `users`
 
 ### Ce qui reste à faire / bugs connus
 
-1. **Schéma Supabase pas encore appliqué** — exécuter `supabase/schema.sql` dans le SQL Editor Supabase avant tout test
-2. **Utilisateur non créé en base au login** — `server/api/auth/login.post.ts` fait un upsert mais échoue silencieusement si la table `users` n'existe pas encore. Une fois le schéma appliqué, ça marchera.
-3. **Auth Google : problème Firefox** — Google OAuth fonctionne sur Chromium mais pas sur Firefox. Utiliser le magic link en attendant.
-4. **`users.id` = email** — avec l'auth simple et magic link, `id = email`. Le schéma prévoyait `id = Google sub`. À garder en tête si on réactive Google OAuth.
-5. **Page `/session/[date]`** — à tester une fois Supabase opérationnel
-6. **Import de données** — page existe, à tester
+1. **Page `/session/[date]`** — à tester une fois les données remplies
+2. **Import de données** — page existe, à tester
+3. **Auth Google : problème Firefox** — Google OAuth fonctionne sur Chromium mais pas sur Firefox. Désactivé pour l'instant.
+4. **Domaine Resend** — En mode test, les emails ne sont envoyés qu'à l'adresse vérifiée dans Resend. Il faut vérifier un domaine pour envoyer à n'importe quelle adresse.
 
 ### Configuration Magic Link (Resend)
 
