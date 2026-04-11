@@ -25,7 +25,8 @@ app/
     auth.vue           # Page login : fond sombre centré
     default.vue        # App principale : header + bottom nav + slot
   pages/
-    login.vue          # Formulaire email/password (auth simple)
+    login.vue          # Formulaire email/password + magic link (toggle)
+    auth/verify.vue    # Page de callback pour magic link
     index.vue          # Dashboard : séance du jour, semaine, stats rapides
     session/[date].vue # Séance : exercices + séries par utilisateur + partenaire
     exercises/         # Liste et création d'exercices
@@ -40,11 +41,14 @@ app/
     auth.ts            # Redirige vers /login si non connecté
 server/
   middleware/
-    auth.ts            # Protège /api/* (sauf /api/auth/*)
+    auth.ts                      # Protège /api/* (sauf /api/auth/*)
   routes/
-    auth/google.get.ts # OAuth Google (désactivé faute de credentials)
+    auth/google.get.ts           # OAuth Google (problème Firefox)
   api/
-    auth/login.post.ts # Auth simple : vérifie NUXT_AUTH_EMAIL + NUXT_AUTH_PASSWORD
+    auth/
+      login.post.ts              # Auth simple : vérifie NUXT_AUTH_EMAIL + NUXT_AUTH_PASSWORD
+      send-magic-link.post.ts    # Envoie un lien de connexion par email (Resend)
+      verify-magic-link.post.ts  # Vérifie le token du magic link
     users/             # GET/PATCH profil
     exercises/         # CRUD exercices
     programs/          # CRUD programmes + jours
@@ -68,7 +72,10 @@ NUXT_AUTH_EMAIL=          # Email de connexion (auth simple dev)
 NUXT_AUTH_PASSWORD=       # Mot de passe de connexion (auth simple dev)
 NUXT_PUBLIC_SUPABASE_URL= # URL du projet Supabase
 NUXT_SUPABASE_SERVICE_KEY=# Clé service_role Supabase (pas la clé anon !)
-# Google OAuth (optionnel, désactivé pour l'instant)
+NUXT_RESEND_API_KEY=      # Clé API Resend pour l'envoi d'emails (magic link)
+NUXT_EMAIL_FROM=          # Optionnel : "Spor <noreply@votredomaine.com>"
+NUXT_PUBLIC_APP_URL=      # URL de l'app (ex: http://localhost:3000 en dev)
+# Google OAuth (optionnel, problème Firefox connu)
 NUXT_OAUTH_GOOGLE_CLIENT_ID=
 NUXT_OAUTH_GOOGLE_CLIENT_SECRET=
 ```
@@ -76,7 +83,10 @@ NUXT_OAUTH_GOOGLE_CLIENT_SECRET=
 ## État actuel (avril 2026)
 
 ### Ce qui fonctionne
-- Auth simple email/password (login → session → redirect)
+- **Auth multiple** :
+  - Email/password simple (dev)
+  - Magic link par email (Resend) — ✅ NOUVEAU
+  - Google OAuth (problème sur Firefox)
 - Styles Nuxt UI + Tailwind v4 correctement chargés
 - Layout auth (login centré) + layout default (header + bottom nav)
 - Connexion Supabase établie (credentials dans .env)
@@ -86,10 +96,25 @@ NUXT_OAUTH_GOOGLE_CLIENT_SECRET=
 
 1. **Schéma Supabase pas encore appliqué** — exécuter `supabase/schema.sql` dans le SQL Editor Supabase avant tout test
 2. **Utilisateur non créé en base au login** — `server/api/auth/login.post.ts` fait un upsert mais échoue silencieusement si la table `users` n'existe pas encore. Une fois le schéma appliqué, ça marchera.
-3. **Auth Google désactivée** — `server/routes/auth/google.get.ts` existe mais nécessite `NUXT_OAUTH_GOOGLE_CLIENT_ID` + `NUXT_OAUTH_GOOGLE_CLIENT_SECRET`. Quand on voudra l'activer, il faudra aussi s'assurer que `users.id` est compatible (Google sub vs email).
-4. **`users.id` = email avec l'auth simple** — le schéma prévoyait `id = Google sub`. Avec l'auth simple, `id = email`. Ça marche mais c'est à garder en tête si on passe à Google OAuth plus tard.
+3. **Auth Google : problème Firefox** — Google OAuth fonctionne sur Chromium mais pas sur Firefox. Utiliser le magic link en attendant.
+4. **`users.id` = email** — avec l'auth simple et magic link, `id = email`. Le schéma prévoyait `id = Google sub`. À garder en tête si on réactive Google OAuth.
 5. **Page `/session/[date]`** — à tester une fois Supabase opérationnel
 6. **Import de données** — page existe, à tester
+
+### Configuration Magic Link (Resend)
+
+Pour activer l'authentification par magic link :
+
+1. Créer un compte sur [resend.com](https://resend.com)
+2. Récupérer la clé API
+3. Ajouter dans `.env` :
+   ```env
+   NUXT_RESEND_API_KEY=re_xxxxx
+   NUXT_PUBLIC_APP_URL=http://localhost:3000  # ou URL prod
+   ```
+4. (Optionnel) Configurer un domaine vérifié dans Resend et modifier `NUXT_EMAIL_FROM`
+
+Le magic link expire après 15 minutes.
 
 ## Modèle de données (résumé)
 
