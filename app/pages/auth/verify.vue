@@ -12,13 +12,16 @@ const status = ref<'loading' | 'success' | 'error'>('loading')
 const errorMessage = ref('')
 
 onMounted(async () => {
-  const token = route.query.token as string
+  const rawToken = route.query.token
+  const token = typeof rawToken === 'string' ? rawToken : ''
 
   if (!token) {
     status.value = 'error'
     errorMessage.value = 'Token manquant dans l\'URL'
     return
   }
+
+  window.history.replaceState({}, document.title, route.path)
 
   try {
     await $fetch('/api/auth/verify-magic-link', {
