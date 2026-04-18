@@ -302,12 +302,17 @@ function onSetsCountChange(sessionExerciseId: string, value: number) {
   setsCountTimers.set(
     sessionExerciseId,
     setTimeout(async () => {
+      // Skip save if user still typing
+      if (document.activeElement?.tagName === 'INPUT') {
+        return
+      }
+
       await $fetch(`/api/session-exercises/${sessionExerciseId}`, {
         method: 'PATCH',
         body: { sets_count: value }
       })
       setsCountTimers.delete(sessionExerciseId)
-    }, 800)
+    }, 1500)
   )
 }
 
@@ -335,8 +340,14 @@ function scheduleSave(sessionExerciseId: string, setNumber: number, userId: stri
     key,
     setTimeout(async () => {
       saveTimers.delete(key)
+
+      // Skip save if user still typing in any input
+      if (document.activeElement?.tagName === 'INPUT') {
+        return
+      }
+
       await saveSet(sessionExerciseId, setNumber, userId)
-    }, 800)
+    }, 1500)
   )
 }
 
