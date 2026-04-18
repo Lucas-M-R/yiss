@@ -24,7 +24,7 @@ export const useChrono = () => {
     }
   }
 
-  const pause = () => {
+  const pause = async () => {
     if (!isRunning.value) return
 
     isRunning.value = false
@@ -32,19 +32,19 @@ export const useChrono = () => {
       clearInterval(intervalId)
       intervalId = null
     }
-  }
-
-  const reset = async () => {
-    pause()
-    time.value = 0
     await releaseWakeLock()
   }
 
-  const toggle = () => {
+  const reset = async () => {
+    await pause()
+    time.value = 0
+  }
+
+  const toggle = async () => {
     if (isRunning.value) {
-      pause()
+      await pause()
     } else {
-      start()
+      await start()
     }
   }
 
@@ -75,9 +75,8 @@ export const useChrono = () => {
   }
 
   // Cleanup on unmount
-  onUnmounted(async () => {
+  onUnmounted(() => {
     pause()
-    await releaseWakeLock()
   })
 
   return {
