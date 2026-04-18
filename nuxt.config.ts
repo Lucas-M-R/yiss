@@ -33,13 +33,18 @@ export default defineNuxtConfig({
   },
 
   pwa: {
+    registerType: 'autoUpdate',
     manifest: {
-      name: 'Spor',
+      name: 'Spor - Entraînement en duo',
       short_name: 'Spor',
+      description: 'Application de suivi d\'entraînement sportif en duo',
       theme_color: '#18181b',
       background_color: '#18181b',
       display: 'standalone',
-      categories: ['fitness'],
+      orientation: 'portrait',
+      scope: '/',
+      start_url: '/',
+      categories: ['fitness', 'health'],
       icons: [
         {
           src: '/icons/icon-192x192.png',
@@ -50,11 +55,18 @@ export default defineNuxtConfig({
           src: '/icons/icon-512x512.png',
           sizes: '512x512',
           type: 'image/png'
+        },
+        {
+          src: '/icons/icon-512x512-maskable.png',
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'maskable'
         }
       ]
     },
     workbox: {
-      navigateFallback: '/'
+      navigateFallback: '/',
+      globPatterns: ['**/*.{js,css,html,png,svg,ico}']
     },
     devOptions: {
       enabled: true,
