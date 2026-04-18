@@ -12,7 +12,7 @@ begin
       select 1 from information_schema.columns
       where table_schema = 'public' and table_name = 'users' and column_name = 'password_hash'
     ) then
-      alter table users add column password_hash text;
+      alter table public.users add column password_hash text;
     end if;
   end if;
 end $$;
