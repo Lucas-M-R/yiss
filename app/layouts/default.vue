@@ -2,6 +2,7 @@
 import { useAuth } from '~/composables/useAuth'
 
 const { user } = useAuth()
+const { open: openChrono } = useChrono()
 
 const navItems = [
   { label: 'Accueil', icon: 'i-lucide-home', to: '/' },
@@ -23,14 +24,23 @@ function isActive(to: string) {
     <!-- Top header -->
     <header class="sticky top-0 z-40 bg-zinc-900/80 backdrop-blur border-b border-zinc-800 px-4 py-3 flex items-center justify-between">
       <span class="text-xl font-bold tracking-tight text-violet-400">Spor</span>
-      <NuxtLink to="/settings">
-        <UAvatar
-          :src="user?.avatar as string | undefined"
-          :alt="user?.name as string | undefined"
+      <div class="flex items-center gap-3">
+        <UButton
+          icon="i-lucide-timer"
+          variant="ghost"
+          color="gray"
           size="sm"
-          class="cursor-pointer ring-2 ring-violet-500/50 hover:ring-violet-500 transition"
+          @click="openChrono"
         />
-      </NuxtLink>
+        <NuxtLink to="/settings">
+          <UAvatar
+            :src="user?.avatar as string | undefined"
+            :alt="user?.name as string | undefined"
+            size="sm"
+            class="cursor-pointer ring-2 ring-violet-500/50 hover:ring-violet-500 transition"
+          />
+        </NuxtLink>
+      </div>
     </header>
 
     <!-- Main content -->
@@ -53,5 +63,8 @@ function isActive(to: string) {
         <span class="text-[10px] font-medium leading-none">{{ item.label }}</span>
       </NuxtLink>
     </nav>
+
+    <!-- Chrono overlay -->
+    <Chrono />
   </div>
 </template>
