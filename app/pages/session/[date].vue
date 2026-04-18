@@ -288,6 +288,14 @@ async function removeExercise(sessionExerciseId: string) {
   }
 }
 
+async function saveSetsCount(sessionExerciseId: string, value: number) {
+  await $fetch(`/api/session-exercises/${sessionExerciseId}`, {
+    method: 'PATCH',
+    body: { sets_count: value }
+  })
+  setsCountTimers.delete(sessionExerciseId)
+}
+
 function onSetsCountChange(sessionExerciseId: string, value: number) {
   // Optimistic update
   if (sessionData.value?.session) {
@@ -301,19 +309,18 @@ function onSetsCountChange(sessionExerciseId: string, value: number) {
   }
   setsCountTimers.set(
     sessionExerciseId,
-    setTimeout(async () => {
-      // Skip save if user still typing
-      if (document.activeElement?.tagName === 'INPUT') {
-        return
-      }
-
-      await $fetch(`/api/session-exercises/${sessionExerciseId}`, {
-        method: 'PATCH',
-        body: { sets_count: value }
-      })
-      setsCountTimers.delete(sessionExerciseId)
-    }, 1500)
+    setTimeout(() => saveSetsCount(sessionExerciseId, value), 1500)
   )
+}
+
+function onSetsCountBlur(sessionExerciseId: string) {
+  // Save immediately on blur
+  if (setsCountTimers.has(sessionExerciseId)) {
+    clearTimeout(setsCountTimers.get(sessionExerciseId)!)
+    setsCountTimers.delete(sessionExerciseId)
+    const ex = sessionData.value?.session?.exercises.find(e => e.id === sessionExerciseId)
+    if (ex) saveSetsCount(sessionExerciseId, ex.sets_count)
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -338,17 +345,21 @@ function scheduleSave(sessionExerciseId: string, setNumber: number, userId: stri
 
   saveTimers.set(
     key,
-    setTimeout(async () => {
+    setTimeout(() => {
       saveTimers.delete(key)
-
-      // Skip save if user still typing in any input
-      if (document.activeElement?.tagName === 'INPUT') {
-        return
-      }
-
-      await saveSet(sessionExerciseId, setNumber, userId)
+      saveSet(sessionExerciseId, setNumber, userId)
     }, 1500)
   )
+}
+
+function onSetBlur(sessionExerciseId: string, setNumber: number, userId: string) {
+  // Save immediately on blur
+  const key = `${sessionExerciseId}-${userId}-${setNumber}`
+  if (saveTimers.has(key)) {
+    clearTimeout(saveTimers.get(key)!)
+    saveTimers.delete(key)
+    saveSet(sessionExerciseId, setNumber, userId)
+  }
 }
 
 async function saveSet(sessionExerciseId: string, setNumber: number, userId: string) {
@@ -624,6 +635,7 @@ function onCardioInput(
                     max="10"
                     class="w-12 text-center bg-zinc-700 border border-zinc-600 rounded text-white text-xs px-1 py-1 tabular-nums focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
                     @input="onSetsCountChange(ex.id, parseInt(($event.target as HTMLInputElement).value, 10))"
+                    @blur="onSetsCountBlur(ex.id)"
                   />
                 </td>
 
@@ -681,6 +693,7 @@ function onCardioInput(
                       placeholder="—"
                       class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-white text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
                       @input="onStrengthInput(ex.id, n, me.id, 'reps', ($event.target as HTMLInputElement).value)"
+                      @blur="onSetBlur(ex.id, n, me.id)"
                     />
                   </td>
                   <!-- Me: weight -->
@@ -694,6 +707,7 @@ function onCardioInput(
                       placeholder="kg"
                       class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-white text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
                       @input="onStrengthInput(ex.id, n, me.id, 'weight_kg', ($event.target as HTMLInputElement).value)"
+                      @blur="onSetBlur(ex.id, n, me.id)"
                     />
                   </td>
 
@@ -707,6 +721,7 @@ function onCardioInput(
                       placeholder="—"
                       class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-zinc-300 text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50"
                       @input="onStrengthInput(ex.id, n, partner.id, 'reps', ($event.target as HTMLInputElement).value)"
+                      @blur="onSetBlur(ex.id, n, partner.id)"
                     />
                   </td>
                   <!-- Partner: weight (editable) -->
@@ -720,6 +735,7 @@ function onCardioInput(
                       placeholder="kg"
                       class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-zinc-300 text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50"
                       @input="onStrengthInput(ex.id, n, partner.id, 'weight_kg', ($event.target as HTMLInputElement).value)"
+                      @blur="onSetBlur(ex.id, n, partner.id)"
                     />
                   </td>
                 </template>
