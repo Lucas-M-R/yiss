@@ -691,7 +691,7 @@ function onCardioInput(
                       min="0"
                       :value="getSet(ex.id, me.id, n)?.reps ?? ''"
                       placeholder="—"
-                      class="w-14 text-center bg-zinc-800 border border-zinc-700 rounded text-white text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
+                      class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-white text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
                       @input="onStrengthInput(ex.id, n, me.id, 'reps', ($event.target as HTMLInputElement).value)"
                       @blur="onSetBlur(ex.id, n, me.id)"
                     />
@@ -705,7 +705,7 @@ function onCardioInput(
                       step="0.5"
                       :value="getSet(ex.id, me.id, n)?.weight_kg ?? ''"
                       placeholder="kg"
-                      class="w-16 text-center bg-zinc-800 border border-zinc-700 rounded text-white text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
+                      class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-white text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
                       @input="onStrengthInput(ex.id, n, me.id, 'weight_kg', ($event.target as HTMLInputElement).value)"
                       @blur="onSetBlur(ex.id, n, me.id)"
                     />
@@ -719,7 +719,7 @@ function onCardioInput(
                       min="0"
                       :value="getSet(ex.id, partner.id, n)?.reps ?? ''"
                       placeholder="—"
-                      class="w-14 text-center bg-zinc-800 border border-zinc-700 rounded text-zinc-300 text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50"
+                      class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-zinc-300 text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50"
                       @input="onStrengthInput(ex.id, n, partner.id, 'reps', ($event.target as HTMLInputElement).value)"
                       @blur="onSetBlur(ex.id, n, partner.id)"
                     />
@@ -733,7 +733,7 @@ function onCardioInput(
                       step="0.5"
                       :value="getSet(ex.id, partner.id, n)?.weight_kg ?? ''"
                       placeholder="kg"
-                      class="w-16 text-center bg-zinc-800 border border-zinc-700 rounded text-zinc-300 text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50"
+                      class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-zinc-300 text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50"
                       @input="onStrengthInput(ex.id, n, partner.id, 'weight_kg', ($event.target as HTMLInputElement).value)"
                       @blur="onSetBlur(ex.id, n, partner.id)"
                     />
@@ -749,9 +749,8 @@ function onCardioInput(
                       inputmode="numeric"
                       :value="secToDisplay(getSet(ex.id, me.id, n)?.duration_sec ?? null)"
                       placeholder="MM:SS"
-                      class="w-20 text-center bg-zinc-800 border border-zinc-700 rounded text-white text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
-                      @input="onCardioInput(ex.id, n, me.id, ($event.target as HTMLInputElement).value)"
-                      @blur="onSetBlur(ex.id, n, me.id)"
+                      class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-white text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
+                      @change="onCardioInput(ex.id, n, me.id, ($event.target as HTMLInputElement).value)"
                     />
                   </td>
                   <!-- Partner: duration (editable) -->
@@ -761,9 +760,8 @@ function onCardioInput(
                       inputmode="numeric"
                       :value="secToDisplay(getSet(ex.id, partner.id, n)?.duration_sec ?? null)"
                       placeholder="MM:SS"
-                      class="w-20 text-center bg-zinc-800 border border-zinc-700 rounded text-zinc-300 text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50"
-                      @input="onCardioInput(ex.id, n, partner.id, ($event.target as HTMLInputElement).value)"
-                      @blur="onSetBlur(ex.id, n, partner.id)"
+                      class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-zinc-300 text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50"
+                      @change="onCardioInput(ex.id, n, partner.id, ($event.target as HTMLInputElement).value)"
                     />
                   </td>
                 </template>
