@@ -14,8 +14,5 @@ begin
     ) then
       alter table users add column password_hash text;
     end if;
-
-    -- Créer l'index si la table existe
-    create index if not exists users_email_idx on users(email);
   end if;
 end $$;
