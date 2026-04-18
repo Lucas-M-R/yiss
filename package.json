@@ -13,6 +13,7 @@
     "@nuxt/ui": "^4.6.0",
     "@supabase/supabase-js": "^2.49.4",
     "@vite-pwa/nuxt": "^0.10.6",
+    "bcryptjs": "^3.0.3",
     "chart.js": "^4.4.9",
     "nuxt": "^4.4.2",
     "nuxt-auth-utils": "^0.5.18",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@nuxt/devtools": "latest",
+    "@types/bcryptjs": "^3.0.0",
     "typescript": "^5.8.3",
     "vue-tsc": "^2.2.10"
   }

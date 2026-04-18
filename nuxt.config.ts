@@ -16,6 +16,7 @@ export default defineNuxtConfig({
     authPassword: '',
     supabaseServiceKey: '',
     resendApiKey: '',
+    emailFrom: 'Spor <onboarding@resend.dev>',
     oauth: {
       google: {
         clientId: '',
@@ -26,7 +27,8 @@ export default defineNuxtConfig({
       password: ''
     },
     public: {
-      supabaseUrl: ''
+      supabaseUrl: '',
+      appUrl: ''
     }
   },
 
@@ -68,6 +70,15 @@ export default defineNuxtConfig({
   typescript: {
     strict: true,
     typeCheck: false
+  },
+
+  nitro: {
+    storage: {
+      'magic-links': {
+        driver: 'fs',
+        base: '.data/magic-links'
+      }
+    }
   },
 
   devtools: { enabled: true }

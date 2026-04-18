@@ -73,6 +73,39 @@ async function removePartner() {
   }
 }
 
+// Password management
+const newPassword = ref('')
+const confirmPassword = ref('')
+const isSavingPassword = ref(false)
+const showPasswordSection = ref(false)
+
+async function setPassword() {
+  if (!newPassword.value || newPassword.value.length < 8) {
+    toast.add({ title: 'Le mot de passe doit contenir au moins 8 caractères', color: 'error' })
+    return
+  }
+  if (newPassword.value !== confirmPassword.value) {
+    toast.add({ title: 'Les mots de passe ne correspondent pas', color: 'error' })
+    return
+  }
+
+  isSavingPassword.value = true
+  try {
+    await $fetch('/api/auth/set-password', {
+      method: 'POST',
+      body: { password: newPassword.value }
+    })
+    newPassword.value = ''
+    confirmPassword.value = ''
+    showPasswordSection.value = false
+    toast.add({ title: 'Mot de passe défini avec succès', description: 'Vous pouvez maintenant vous connecter avec votre email et mot de passe.', color: 'success' })
+  } catch (e: any) {
+    toast.add({ title: 'Erreur', description: e?.data?.message ?? 'Impossible de définir le mot de passe', color: 'error' })
+  } finally {
+    isSavingPassword.value = false
+  }
+}
+
 // Logout
 async function logout() {
   await clear()
@@ -211,6 +244,62 @@ async function logout() {
           >
             Retirer le partenaire
           </UButton>
+        </div>
+      </UCard>
+    </section>
+
+    <!-- Security section -->
+    <section class="space-y-2">
+      <p class="text-xs text-zinc-500 uppercase tracking-wide font-medium px-1">Sécurité</p>
+      <UCard class="bg-zinc-900 border border-zinc-800">
+        <div class="space-y-4 py-1">
+          <div v-if="!showPasswordSection">
+            <p class="text-zinc-400 text-sm mb-3">
+              Définissez un mot de passe pour vous connecter plus rapidement sans attendre l'email.
+            </p>
+            <UButton
+              color="violet"
+              variant="outline"
+              icon="i-lucide-key"
+              @click="showPasswordSection = true"
+            >
+              Définir un mot de passe
+            </UButton>
+          </div>
+
+          <div v-else class="space-y-3">
+            <UInput
+              v-model="newPassword"
+              type="password"
+              placeholder="Nouveau mot de passe (min. 8 caractères)"
+              color="neutral"
+            />
+            <UInput
+              v-model="confirmPassword"
+              type="password"
+              placeholder="Confirmer le mot de passe"
+              color="neutral"
+              @keyup.enter="setPassword"
+            />
+            <div class="flex gap-2">
+              <UButton
+                color="violet"
+                variant="solid"
+                :loading="isSavingPassword"
+                :disabled="!newPassword || !confirmPassword"
+                @click="setPassword"
+              >
+                Enregistrer
+              </UButton>
+              <UButton
+                color="neutral"
+                variant="ghost"
+                @click="showPasswordSection = false; newPassword = ''; confirmPassword = ''"
+              >
+                Annuler
+              </UButton>
+            </div>
+          </div>
         </div>
       </UCard>
     </section>
