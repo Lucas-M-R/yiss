@@ -1,28 +1,27 @@
 import bcrypt from 'bcryptjs'
+import { serverSupabaseClient } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
-  // Vérifier que l'utilisateur est connecté
   const session = await getUserSession(event)
   if (!session?.user) {
     throw createError({ statusCode: 401, message: 'Non autorisé' })
   }
 
-  const { password } = await readBody(event)
+  const body = await readBody(event)
 
-  // Validation du mot de passe
-  if (!password || password.length < 8) {
+  if (!body || typeof body.password !== 'string' || body.password.length < 8) {
     throw createError({
       statusCode: 400,
       message: 'Le mot de passe doit contenir au moins 8 caractères'
     })
   }
 
+  const { password } = body
+
   try {
-    // Hasher le mot de passe
     const passwordHash = await bcrypt.hash(password, 10)
 
-    // Mettre à jour l'utilisateur dans Supabase
-    const supabase = useSupabaseClient()
+    const supabase = await serverSupabaseClient(event)
     const { error } = await supabase
       .from('users')
       .update({ password_hash: passwordHash })
@@ -30,19 +29,13 @@ export default defineEventHandler(async (event) => {
 
     if (error) {
       console.error('Erreur Supabase lors de la mise à jour du mot de passe:', error)
-      throw createError({
-        statusCode: 500,
-        message: 'Impossible de définir le mot de passe'
-      })
+      throw createError({ statusCode: 500, message: 'Impossible de définir le mot de passe' })
     }
 
-    console.log('✅ Mot de passe défini avec succès pour:', session.user.email)
     return { ok: true }
-  } catch (error) {
+  } catch (error: any) {
+    if (error.statusCode) throw error
     console.error('❌ Erreur lors de la définition du mot de passe:', error)
-    throw createError({
-      statusCode: 500,
-      message: 'Impossible de définir le mot de passe'
-    })
+    throw createError({ statusCode: 500, message: 'Impossible de définir le mot de passe' })
   }
 })

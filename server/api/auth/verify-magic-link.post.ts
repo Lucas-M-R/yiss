@@ -1,82 +1,56 @@
+import { serverSupabaseClient } from '#supabase/server'
+
 export default defineEventHandler(async (event) => {
-  const { token } = await readBody(event)
+  const body = await readBody(event)
 
-  console.log('🔍 Vérification du token:', token)
-
-  if (!token) {
+  if (!body || typeof body.token !== 'string') {
     throw createError({ statusCode: 400, message: 'Token manquant' })
   }
 
-  try {
-    // Récupérer les données du token depuis le storage
-    const storage = useStorage('magic-links')
-    const data = await storage.getItem(token) as { email: string; createdAt: number } | null
+  const { token } = body
 
-    console.log('📦 Données récupérées du storage:', data)
+  const storage = useStorage('magic-links')
+  const data = await storage.getItem(token) as { email: string; createdAt: number } | null
 
-    if (!data || !data.email) {
-      console.error('❌ Token non trouvé ou expiré')
-      throw createError({
-        statusCode: 401,
-        message: 'Lien de connexion invalide ou expiré'
-      })
-    }
-
-    // Supprimer le token (usage unique)
-    await storage.removeItem(token)
-
-    const email = data.email
-    const name = email.split('@')[0]
-
-    // Créer ou mettre à jour l'utilisateur dans Supabase
-    let userId: string
-    try {
-      const supabase = useSupabaseClient()
-
-      // Check if user exists
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', email)
-        .single()
-
-      if (existingUser) {
-        userId = existingUser.id
-      } else {
-        // Generate ID for new user (magic-link prefix + UUID)
-        userId = `magic-${crypto.randomUUID()}`
-        const { error } = await supabase.from('users').insert({
-          id: userId,
-          email,
-          display_name: name,
-          avatar_url: null
-        })
-
-        if (error) {
-          console.error('Erreur création utilisateur:', error)
-          throw error
-        }
-      }
-    } catch (error) {
-      console.error('Erreur Supabase:', error)
-      // Fallback: use email as ID if Supabase fails
-      userId = `magic-${crypto.randomUUID()}`
-    }
-
-    // Créer la session
-    await setUserSession(event, {
-      user: { id: userId, email, name, avatar: null }
-    }, {
-      maxAge: 60 * 60 * 24 * 30 // 30 jours
-    })
-
-    console.log('✅ Session créée avec succès pour:', email)
-    return { ok: true }
-  } catch (error) {
-    console.error('❌ Erreur de vérification du token:', error)
-    throw createError({
-      statusCode: 401,
-      message: 'Lien de connexion invalide ou expiré'
-    })
+  if (!data || !data.email) {
+    throw createError({ statusCode: 401, message: 'Lien de connexion invalide ou expiré' })
   }
+
+  if (Date.now() - data.createdAt > 15 * 60 * 1000) {
+    await storage.removeItem(token)
+    throw createError({ statusCode: 401, message: 'Lien de connexion invalide ou expiré' })
+  }
+
+  await storage.removeItem(token)
+
+  const { email } = data
+
+  const supabase = await serverSupabaseClient(event)
+  const { data: persisted, error: upsertError } = await supabase
+    .from('users')
+    .upsert(
+      { email, display_name: email.split('@')[0], avatar_url: null },
+      { onConflict: 'email' }
+    )
+    .select('id, email, display_name, avatar_url, partner_id')
+    .single()
+
+  if (upsertError || !persisted) {
+    console.error('❌ Erreur Supabase upsert:', upsertError)
+    throw createError({ statusCode: 500, message: 'Erreur lors de la création du compte' })
+  }
+
+  await setUserSession(event, {
+    user: {
+      id: persisted.id,
+      email: persisted.email,
+      name: persisted.display_name,
+      avatar: persisted.avatar_url,
+      partner_id: persisted.partner_id
+    }
+  }, {
+    maxAge: 60 * 60 * 24 * 30
+  })
+
+  return { ok: true }
 })

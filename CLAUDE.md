@@ -46,7 +46,7 @@ server/
     auth/google.get.ts           # OAuth Google (problème Firefox)
   api/
     auth/
-      login.post.ts              # Auth simple : vérifie NUXT_AUTH_EMAIL + NUXT_AUTH_PASSWORD
+      login.post.ts              # Auth email/password via bcrypt (password_hash en base)
       send-magic-link.post.ts    # Envoie un lien de connexion par email (Resend)
       verify-magic-link.post.ts  # Vérifie le token du magic link
     users/             # GET/PATCH profil
@@ -83,8 +83,9 @@ NUXT_OAUTH_GOOGLE_CLIENT_SECRET=
 ## État actuel (avril 2026)
 
 ### Ce qui fonctionne ✅
+
 - **Auth complète** :
-  - **Magic link par email** (Resend) — Le lien pointe vers `/login?token=...` pour éviter les problèmes de routing SSR
+  - **Magic link par email** (Resend) — Le lien pointe vers `/auth/verify?token=...` (callback dédiée, `auth: false`)
   - **Email + mot de passe** (bcrypt) — L'utilisateur peut définir un mot de passe dans les paramètres
   - Google OAuth (problème sur Firefox, désactivé)
 - **Storage des magic links** : Filesystem storage (`.data/magic-links/`) avec TTL de 15 minutes
@@ -109,10 +110,12 @@ Pour activer l'authentification par magic link :
 1. Créer un compte sur [resend.com](https://resend.com)
 2. Récupérer la clé API
 3. Ajouter dans `.env` :
+
    ```env
    NUXT_RESEND_API_KEY=re_xxxxx
    NUXT_PUBLIC_APP_URL=http://localhost:3000  # ou URL prod
    ```
+
 4. (Optionnel) Configurer un domaine vérifié dans Resend et modifier `NUXT_EMAIL_FROM`
 
 Le magic link expire après 15 minutes.
