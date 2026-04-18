@@ -2,7 +2,7 @@
 import { useAuth } from '~/composables/useAuth'
 
 const { user } = useAuth()
-const { open: openChrono } = useChrono()
+const { open: openChrono, isOpen: isChronoOpen } = useChrono()
 
 const navItems = [
   { label: 'Accueil', icon: 'i-lucide-home', to: '/' },
@@ -44,7 +44,7 @@ function isActive(to: string) {
     </header>
 
     <!-- Main content -->
-    <main class="flex-1 overflow-y-auto pb-20">
+    <main class="flex-1 overflow-y-auto transition-[padding]" :class="isChronoOpen ? 'pb-[240px]' : 'pb-20'">
       <slot />
     </main>
 
