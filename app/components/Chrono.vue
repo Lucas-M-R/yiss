@@ -6,7 +6,7 @@ const { isOpen, time, isRunning, toggle, reset, close, formatTime } = useChrono(
   <Teleport to="body">
     <div
       v-if="isOpen"
-      class="fixed bottom-20 left-0 right-0 z-40 bg-zinc-900/95 backdrop-blur border-t border-zinc-800 p-6 shadow-xl"
+      class="fixed bottom-[60px] left-0 right-0 z-40 bg-zinc-900/95 backdrop-blur border-t border-zinc-800 p-6 shadow-xl"
     >
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold">Chronomètre</h3>
