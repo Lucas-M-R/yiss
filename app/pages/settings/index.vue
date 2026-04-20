@@ -31,24 +31,47 @@ async function saveName() {
   }
 }
 
-// Partner invitation
-const inviteEmail = ref('')
-const isSendingInvite = ref(false)
+// Partner search & link
+const searchEmail = ref('')
+const isSearching = ref(false)
+const foundUser = ref<{ id: string, display_name: string, avatar_url: string | null, email: string } | null>(null)
+const searchError = ref('')
+const isLinking = ref(false)
 
-async function sendInvitation() {
-  if (!inviteEmail.value.trim()) return
-  isSendingInvite.value = true
+async function searchUser() {
+  if (!searchEmail.value.trim()) return
+  isSearching.value = true
+  foundUser.value = null
+  searchError.value = ''
   try {
-    await $fetch('/api/invitations', {
-      method: 'POST',
-      body: { email: inviteEmail.value.trim() }
+    const result = await $fetch<{ id: string, display_name: string, avatar_url: string | null, email: string }>('/api/users/search', {
+      query: { email: searchEmail.value.trim() }
     })
-    inviteEmail.value = ''
-    toast.add({ title: 'Invitation envoyée', description: 'Votre partenaire recevra un lien pour accepter.', color: 'success' })
+    foundUser.value = result
   } catch (e: any) {
-    toast.add({ title: 'Erreur', description: e?.data?.message ?? 'Impossible d\'envoyer l\'invitation', color: 'error' })
+    searchError.value = e?.data?.message ?? 'Utilisateur non trouvé'
   } finally {
-    isSendingInvite.value = false
+    isSearching.value = false
+  }
+}
+
+async function linkPartner() {
+  if (!foundUser.value) return
+  isLinking.value = true
+  const partnerName = foundUser.value.display_name
+  try {
+    await $fetch('/api/partners/link', {
+      method: 'POST',
+      body: { userId: foundUser.value.id }
+    })
+    searchEmail.value = ''
+    foundUser.value = null
+    await refreshProfile()
+    toast.add({ title: 'Partenaire ajouté !', description: `Vous êtes maintenant liés avec ${partnerName}.`, color: 'success' })
+  } catch (e: any) {
+    toast.add({ title: 'Erreur', description: e?.data?.message ?? 'Impossible d\'ajouter ce partenaire', color: 'error' })
+  } finally {
+    isLinking.value = false
   }
 }
 
@@ -169,25 +192,53 @@ async function logout() {
       <UCard v-if="!profile?.partner" class="bg-zinc-900 border border-zinc-800">
         <div class="space-y-3 py-1">
           <p class="text-zinc-400 text-sm">
-            Invitez quelqu'un pour suivre votre progression ensemble.
+            Recherchez un membre déjà inscrit par son adresse email pour vous lier à lui.
           </p>
           <div class="flex gap-2">
             <UInput
-              v-model="inviteEmail"
+              v-model="searchEmail"
               type="email"
               placeholder="adresse@email.com"
               class="flex-1"
               color="neutral"
-              @keyup.enter="sendInvitation"
+              @keyup.enter="searchUser"
             />
             <UButton
               color="violet"
-              variant="solid"
-              :loading="isSendingInvite"
-              :disabled="!inviteEmail.trim()"
-              @click="sendInvitation"
+              variant="outline"
+              :loading="isSearching"
+              :disabled="!searchEmail.trim()"
+              icon="i-lucide-search"
+              @click="searchUser"
             >
-              Envoyer l'invitation
+              Rechercher
+            </UButton>
+          </div>
+
+          <!-- Error -->
+          <p v-if="searchError" class="text-sm text-red-400">{{ searchError }}</p>
+
+          <!-- Found user -->
+          <div v-if="foundUser" class="rounded-lg bg-zinc-800/60 border border-zinc-700 p-3 flex items-center gap-3">
+            <UAvatar
+              :src="foundUser.avatar_url ?? undefined"
+              :alt="foundUser.display_name ?? undefined"
+              size="md"
+              class="ring-2 ring-violet-500/30 shrink-0"
+            />
+            <div class="flex-1 min-w-0">
+              <p class="text-white font-medium truncate">{{ foundUser.display_name }}</p>
+              <p class="text-zinc-400 text-xs truncate">{{ foundUser.email }}</p>
+            </div>
+            <UButton
+              color="violet"
+              variant="solid"
+              size="sm"
+              :loading="isLinking"
+              icon="i-lucide-user-plus"
+              @click="linkPartner"
+            >
+              Ajouter
             </UButton>
           </div>
         </div>
