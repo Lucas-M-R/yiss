@@ -4,9 +4,14 @@ export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
   if (!session?.user) throw createError({ statusCode: 401 })
 
-  const query = getQuery(event)
-  const email = (query.email as string)?.trim().toLowerCase()
-  if (!email) throw createError({ statusCode: 400, message: 'Email requis' })
+  setHeader(event, 'Cache-Control', 'no-store')
+
+  const body = await readBody(event)
+  const rawEmail = body?.email
+  if (typeof rawEmail !== 'string' || !rawEmail.trim()) {
+    throw createError({ statusCode: 400, message: 'Email requis' })
+  }
+  const email = rawEmail.trim().toLowerCase()
 
   const supabase = useSupabaseClient()
 
