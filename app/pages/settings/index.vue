@@ -45,7 +45,8 @@ async function searchUser() {
   searchError.value = ''
   try {
     const result = await $fetch<{ id: string, display_name: string, avatar_url: string | null, email: string }>('/api/users/search', {
-      query: { email: searchEmail.value.trim() }
+      method: 'POST',
+      body: { email: searchEmail.value.trim() }
     })
     foundUser.value = result
   } catch (e: any) {
