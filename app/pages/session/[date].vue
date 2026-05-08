@@ -117,6 +117,16 @@ const saveTimers = new Map<string, ReturnType<typeof setTimeout>>()
 // Inline sets_count editing
 const setsCountTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
+// Notes
+const notes = ref('')
+const noteSaving = ref(false)
+const noteSaved = ref(false)
+let notesTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(session, (s) => {
+  if (s) notes.value = s.notes ?? ''
+}, { immediate: true })
+
 // ---------------------------------------------------------------------------
 // Computed helpers
 // ---------------------------------------------------------------------------
@@ -480,6 +490,33 @@ function onStrengthInput(
   scheduleSave(sessionExerciseId, setNumber, userId)
 }
 
+async function saveNotes() {
+  noteSaving.value = true
+  try {
+    await $fetch(`/api/sessions/${date.value}`, {
+      method: 'PATCH',
+      body: { notes: notes.value || null }
+    })
+    noteSaved.value = true
+    setTimeout(() => { noteSaved.value = false }, 1200)
+  } finally {
+    noteSaving.value = false
+  }
+}
+
+function onNotesInput() {
+  if (notesTimer) clearTimeout(notesTimer)
+  notesTimer = setTimeout(saveNotes, 1500)
+}
+
+function onNotesBlur() {
+  if (notesTimer) {
+    clearTimeout(notesTimer)
+    notesTimer = null
+  }
+  saveNotes()
+}
+
 function onCardioInput(
   sessionExerciseId: string,
   setNumber: number,
@@ -792,6 +829,29 @@ function onCardioInput(
         >
           Ajouter un exercice
         </UButton>
+      </div>
+
+      <!-- Session notes -->
+      <div class="max-w-2xl mx-auto">
+        <UCard class="bg-zinc-900 border border-zinc-800">
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Notes complémentaires</label>
+              <div class="h-4 flex items-center">
+                <UIcon v-if="noteSaving" name="i-lucide-loader-circle" class="text-xs text-zinc-500 animate-spin" />
+                <UIcon v-else-if="noteSaved" name="i-lucide-check" class="text-xs text-green-400" />
+              </div>
+            </div>
+            <textarea
+              v-model="notes"
+              rows="3"
+              placeholder="Ressenti de la séance, observations…"
+              class="w-full bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm px-3 py-2 placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 resize-none"
+              @input="onNotesInput"
+              @blur="onNotesBlur"
+            />
+          </div>
+        </UCard>
       </div>
     </div>
 
