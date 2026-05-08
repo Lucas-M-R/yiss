@@ -4,6 +4,14 @@ import { useAuth } from '~/composables/useAuth'
 const { user } = useAuth()
 const { open: openChrono, isOpen: isChronoOpen } = useChrono()
 
+const isRefreshing = ref(false)
+
+async function refresh() {
+  isRefreshing.value = true
+  await refreshNuxtData()
+  isRefreshing.value = false
+}
+
 const navItems = [
   { label: 'Accueil', icon: 'i-lucide-home', to: '/' },
   { label: 'Séances', icon: 'i-lucide-calendar', to: '/session/' + new Date().toISOString().slice(0, 10) },
@@ -25,6 +33,15 @@ function isActive(to: string) {
     <header class="sticky top-0 z-40 bg-zinc-900/80 backdrop-blur border-b border-zinc-800 px-4 py-3 flex items-center justify-between">
       <span class="text-xl font-bold tracking-tight text-violet-400">Spor</span>
       <div class="flex items-center gap-3">
+        <UButton
+          icon="i-lucide-refresh-cw"
+          variant="ghost"
+          color="gray"
+          size="sm"
+          :class="isRefreshing ? 'animate-spin' : ''"
+          :disabled="isRefreshing"
+          @click="refresh"
+        />
         <UButton
           icon="i-lucide-timer"
           variant="ghost"
