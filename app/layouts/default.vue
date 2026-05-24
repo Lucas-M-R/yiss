@@ -3,12 +3,13 @@ import { useAuth } from '~/composables/useAuth'
 
 const { user } = useAuth()
 const { open: openChrono, isOpen: isChronoOpen } = useChrono()
+const { refresh: pageRefresh } = usePageRefresh()
 
 const isRefreshing = ref(false)
 
 async function refresh() {
   isRefreshing.value = true
-  await refreshNuxtData()
+  await pageRefresh()
   isRefreshing.value = false
 }
 
