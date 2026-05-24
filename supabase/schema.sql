@@ -125,7 +125,8 @@ create table session_exercises (
   session_id   uuid not null references sessions(id) on delete cascade,
   exercise_id  uuid not null references exercises(id) on delete cascade,
   sets_count   int not null default 3,
-  sort_order   int not null default 0
+  sort_order   int not null default 0,
+  notes        text
 );
 
 -- =============================================================================

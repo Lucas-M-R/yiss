@@ -4,19 +4,20 @@ export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
   if (!session?.user) throw createError({ statusCode: 401 })
 
-  const id = getRouterParam(event, 'id')
+  const date = getRouterParam(event, 'date')
   const body = await readBody(event)
   const supabase = useSupabaseClient()
 
   const updates: Record<string, unknown> = {}
-  if (body.sets_count !== undefined) updates.sets_count = body.sets_count
   if (body.notes !== undefined) updates.notes = body.notes
 
   const { data, error } = await supabase
-    .from('session_exercises')
+    .from('sessions')
     .update(updates)
-    .eq('id', id)
-    .select().single()
+    .eq('session_date', date)
+    .eq('created_by', session.user.id)
+    .select()
+    .single()
 
   if (error) throw createError({ statusCode: 500, message: error.message })
   return data
