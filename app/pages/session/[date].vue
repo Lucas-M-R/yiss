@@ -111,6 +111,15 @@ const creatingExercise = ref(false)
 const programs = ref<Program[]>([])
 const selectedProgramDayId = ref<string | null>(null)
 
+// Last sets per session exercise: sessionExerciseId -> userId -> set[]
+interface LastSet {
+  set_number: number
+  reps: number | null
+  weight_kg: number | null
+  duration_sec: number | null
+}
+const lastSetsMap = ref<Record<string, Record<string, LastSet[]>>>({})
+
 // Debounce timers: key -> timer id
 const saveTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
@@ -164,10 +173,31 @@ const canCreateExercise = computed(() =>
 // Data fetching
 // ---------------------------------------------------------------------------
 
+async function fetchLastSets(exerciseId: string, sessionExerciseId: string) {
+  try {
+    const data = await $fetch<Record<string, LastSet[]>>(
+      `/api/exercises/${exerciseId}/last-sets`,
+      { query: { date: date.value } }
+    )
+    lastSetsMap.value = { ...lastSetsMap.value, [sessionExerciseId]: data }
+  } catch {
+    // non-bloquant
+  }
+}
+
+function getLastSet(sessionExerciseId: string, userId: string, setNumber: number): LastSet | null {
+  const userSets = lastSetsMap.value[sessionExerciseId]?.[userId]
+  if (!userSets) return null
+  return userSets.find(s => s.set_number === setNumber) ?? userSets[userSets.length - 1] ?? null
+}
+
 async function fetchSession() {
   loading.value = true
   try {
     sessionData.value = await $fetch<SessionData>(`/api/sessions/${date.value}`)
+    // Fetch last sets for all exercises in parallel
+    const exercises = sessionData.value?.session?.exercises ?? []
+    await Promise.all(exercises.map(ex => fetchLastSets(ex.exercise_id, ex.id)))
   } finally {
     loading.value = false
   }
@@ -267,6 +297,7 @@ async function addExercise() {
     if (sessionData.value?.session) {
       sessionData.value.session.exercises.push(newEx)
     }
+    fetchLastSets(selectedExerciseId.value, newEx.id)
     closeAddModal()
   } finally {
     addingExercise.value = false
@@ -690,8 +721,8 @@ function onCardioInput(
                       inputmode="numeric"
                       min="0"
                       :value="getSet(ex.id, me.id, n)?.reps ?? ''"
-                      placeholder="—"
-                      class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-white text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
+                      :placeholder="getLastSet(ex.id, me.id, n)?.reps?.toString() ?? '—'"
+                      class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-white text-xs px-1 py-1 tabular-nums placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
                       @input="onStrengthInput(ex.id, n, me.id, 'reps', ($event.target as HTMLInputElement).value)"
                       @blur="onSetBlur(ex.id, n, me.id)"
                     />
@@ -704,8 +735,8 @@ function onCardioInput(
                       min="0"
                       step="0.5"
                       :value="getSet(ex.id, me.id, n)?.weight_kg ?? ''"
-                      placeholder="kg"
-                      class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-white text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
+                      :placeholder="getLastSet(ex.id, me.id, n)?.weight_kg?.toString() ?? 'kg'"
+                      class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-white text-xs px-1 py-1 tabular-nums placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
                       @input="onStrengthInput(ex.id, n, me.id, 'weight_kg', ($event.target as HTMLInputElement).value)"
                       @blur="onSetBlur(ex.id, n, me.id)"
                     />
@@ -718,8 +749,8 @@ function onCardioInput(
                       inputmode="numeric"
                       min="0"
                       :value="getSet(ex.id, partner.id, n)?.reps ?? ''"
-                      placeholder="—"
-                      class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-zinc-300 text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50"
+                      :placeholder="getLastSet(ex.id, partner.id, n)?.reps?.toString() ?? '—'"
+                      class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-zinc-300 text-xs px-1 py-1 tabular-nums placeholder-zinc-500 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50"
                       @input="onStrengthInput(ex.id, n, partner.id, 'reps', ($event.target as HTMLInputElement).value)"
                       @blur="onSetBlur(ex.id, n, partner.id)"
                     />
@@ -732,8 +763,8 @@ function onCardioInput(
                       min="0"
                       step="0.5"
                       :value="getSet(ex.id, partner.id, n)?.weight_kg ?? ''"
-                      placeholder="kg"
-                      class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-zinc-300 text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50"
+                      :placeholder="getLastSet(ex.id, partner.id, n)?.weight_kg?.toString() ?? 'kg'"
+                      class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-zinc-300 text-xs px-1 py-1 tabular-nums placeholder-zinc-500 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50"
                       @input="onStrengthInput(ex.id, n, partner.id, 'weight_kg', ($event.target as HTMLInputElement).value)"
                       @blur="onSetBlur(ex.id, n, partner.id)"
                     />
@@ -748,8 +779,8 @@ function onCardioInput(
                       type="text"
                       inputmode="numeric"
                       :value="secToDisplay(getSet(ex.id, me.id, n)?.duration_sec ?? null)"
-                      placeholder="MM:SS"
-                      class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-white text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
+                      :placeholder="getLastSet(ex.id, me.id, n)?.duration_sec != null ? secToDisplay(getLastSet(ex.id, me.id, n)!.duration_sec) : 'MM:SS'"
+                      class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-white text-xs px-1 py-1 tabular-nums placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50"
                       @change="onCardioInput(ex.id, n, me.id, ($event.target as HTMLInputElement).value)"
                     />
                   </td>
@@ -759,8 +790,8 @@ function onCardioInput(
                       type="text"
                       inputmode="numeric"
                       :value="secToDisplay(getSet(ex.id, partner.id, n)?.duration_sec ?? null)"
-                      placeholder="MM:SS"
-                      class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-zinc-300 text-xs px-1 py-1 tabular-nums placeholder-zinc-600 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50"
+                      :placeholder="getLastSet(ex.id, partner.id, n)?.duration_sec != null ? secToDisplay(getLastSet(ex.id, partner.id, n)!.duration_sec) : 'MM:SS'"
+                      class="w-full text-center bg-zinc-800 border border-zinc-700 rounded text-zinc-300 text-xs px-1 py-1 tabular-nums placeholder-zinc-500 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50"
                       @change="onCardioInput(ex.id, n, partner.id, ($event.target as HTMLInputElement).value)"
                     />
                   </td>
