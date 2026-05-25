@@ -32,6 +32,7 @@ interface SessionExercise {
   exercise: Exercise
   sets_count: number
   sort_order: number
+  notes: string | null
   sets: SessionSet[]
 }
 
@@ -126,6 +127,12 @@ const saveTimers = new Map<string, ReturnType<typeof setTimeout>>()
 // Inline sets_count editing
 const setsCountTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
+// Comment fields
+const showSessionNotes = ref(false)
+const openExerciseNotes = ref(new Set<string>())
+const sessionNotesTimer = ref<ReturnType<typeof setTimeout> | null>(null)
+const exerciseNotesTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
 // ---------------------------------------------------------------------------
 // Computed helpers
 // ---------------------------------------------------------------------------
@@ -219,9 +226,27 @@ async function fetchExercises() {
   }
 }
 
+watch(() => sessionData.value?.session, (s) => {
+  showSessionNotes.value = !!s?.notes
+  openExerciseNotes.value = new Set()
+  s?.exercises?.forEach(ex => {
+    if (ex.notes) openExerciseNotes.value.add(ex.id)
+  })
+})
+
 onMounted(() => {
   fetchSession()
   fetchPrograms()
+})
+
+onBeforeUnmount(() => {
+  if (sessionNotesTimer.value) clearTimeout(sessionNotesTimer.value)
+  exerciseNotesTimers.forEach(t => clearTimeout(t))
+  exerciseNotesTimers.clear()
+  saveTimers.forEach(t => clearTimeout(t))
+  saveTimers.clear()
+  setsCountTimers.forEach(t => clearTimeout(t))
+  setsCountTimers.clear()
 })
 
 // ---------------------------------------------------------------------------
@@ -352,6 +377,71 @@ function onSetsCountBlur(sessionExerciseId: string) {
     const ex = sessionData.value?.session?.exercises.find(e => e.id === sessionExerciseId)
     if (ex) saveSetsCount(sessionExerciseId, ex.sets_count)
   }
+}
+
+// ---------------------------------------------------------------------------
+// Notes saving
+// ---------------------------------------------------------------------------
+
+function toggleExerciseNotes(sessionExerciseId: string) {
+  if (openExerciseNotes.value.has(sessionExerciseId)) {
+    openExerciseNotes.value.delete(sessionExerciseId)
+  } else {
+    openExerciseNotes.value.add(sessionExerciseId)
+  }
+  openExerciseNotes.value = new Set(openExerciseNotes.value)
+}
+
+async function saveExerciseNotes(sessionExerciseId: string, notes: string) {
+  await $fetch(`/api/session-exercises/${sessionExerciseId}`, {
+    method: 'PATCH',
+    body: { notes: notes || null }
+  })
+  exerciseNotesTimers.delete(sessionExerciseId)
+}
+
+function onExerciseNotesInput(sessionExerciseId: string, value: string) {
+  if (sessionData.value?.session) {
+    const ex = sessionData.value.session.exercises.find(e => e.id === sessionExerciseId)
+    if (ex) ex.notes = value || null
+  }
+  if (exerciseNotesTimers.has(sessionExerciseId)) {
+    clearTimeout(exerciseNotesTimers.get(sessionExerciseId)!)
+  }
+  exerciseNotesTimers.set(
+    sessionExerciseId,
+    setTimeout(() => saveExerciseNotes(sessionExerciseId, value), 1500)
+  )
+}
+
+function onExerciseNotesBlur(sessionExerciseId: string) {
+  if (exerciseNotesTimers.has(sessionExerciseId)) {
+    clearTimeout(exerciseNotesTimers.get(sessionExerciseId)!)
+    exerciseNotesTimers.delete(sessionExerciseId)
+    const ex = sessionData.value?.session?.exercises.find(e => e.id === sessionExerciseId)
+    if (ex) saveExerciseNotes(sessionExerciseId, ex.notes ?? '')
+  }
+}
+
+async function saveSessionNotes(notes: string) {
+  await $fetch(`/api/sessions/${date.value}`, {
+    method: 'PATCH',
+    body: { notes: notes || null }
+  })
+}
+
+function onSessionNotesInput(value: string) {
+  if (sessionData.value?.session) sessionData.value.session.notes = value || null
+  if (sessionNotesTimer.value) clearTimeout(sessionNotesTimer.value)
+  sessionNotesTimer.value = setTimeout(() => saveSessionNotes(value), 1500)
+}
+
+function onSessionNotesBlur(value: string) {
+  if (sessionNotesTimer.value) {
+    clearTimeout(sessionNotesTimer.value)
+    sessionNotesTimer.value = null
+  }
+  saveSessionNotes(value)
 }
 
 // ---------------------------------------------------------------------------
@@ -654,6 +744,14 @@ function onCardioInput(
                       <UIcon name="i-lucide-x" class="text-xs" />
                     </button>
                     <span class="font-medium text-white text-xs leading-tight">{{ ex.exercise.name }}</span>
+                    <button
+                      class="ml-auto flex-shrink-0 transition-colors"
+                      :class="openExerciseNotes.has(ex.id) || ex.notes ? 'text-violet-400' : 'text-zinc-600 hover:text-zinc-400'"
+                      title="Commentaire"
+                      @click="toggleExerciseNotes(ex.id)"
+                    >
+                      <UIcon name="i-lucide-message-square" class="text-xs" />
+                    </button>
                   </div>
                 </td>
 
@@ -678,6 +776,20 @@ function onCardioInput(
                 <template v-if="partner">
                   <td /><td />
                 </template>
+              </tr>
+
+              <!-- Exercise notes row -->
+              <tr v-if="openExerciseNotes.has(ex.id)" class="border-b border-zinc-800/60 bg-zinc-800/20">
+                <td :colspan="partner ? 7 : 5" class="px-3 py-2">
+                  <textarea
+                    :value="ex.notes ?? ''"
+                    placeholder="Commentaire sur cet exercice..."
+                    rows="2"
+                    class="w-full bg-zinc-800 border border-zinc-700 rounded text-white text-xs px-2 py-1.5 placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 resize-none"
+                    @input="onExerciseNotesInput(ex.id, ($event.target as HTMLTextAreaElement).value)"
+                    @blur="onExerciseNotesBlur(ex.id)"
+                  />
+                </td>
               </tr>
 
               <!-- One row per set number -->
@@ -812,8 +924,8 @@ function onCardioInput(
         </table>
       </div>
 
-      <!-- Add exercise button -->
-      <div class="flex justify-center">
+      <!-- Add exercise + session notes buttons -->
+      <div class="flex justify-center gap-2">
         <UButton
           icon="i-lucide-plus"
           variant="outline"
@@ -823,6 +935,27 @@ function onCardioInput(
         >
           Ajouter un exercice
         </UButton>
+        <UButton
+          icon="i-lucide-message-square"
+          variant="ghost"
+          :color="showSessionNotes || session?.notes ? 'violet' : 'neutral'"
+          size="sm"
+          @click="showSessionNotes = !showSessionNotes"
+        >
+          Note de séance
+        </UButton>
+      </div>
+
+      <!-- Session notes -->
+      <div v-if="showSessionNotes" class="max-w-2xl mx-auto">
+        <textarea
+          :value="session?.notes ?? ''"
+          placeholder="Note générale sur la séance..."
+          rows="3"
+          class="w-full bg-zinc-900 border border-zinc-800 rounded-xl text-white text-sm px-3 py-2.5 placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 resize-none"
+          @input="onSessionNotesInput(($event.target as HTMLTextAreaElement).value)"
+          @blur="onSessionNotesBlur(($event.target as HTMLTextAreaElement).value)"
+        />
       </div>
     </div>
 
