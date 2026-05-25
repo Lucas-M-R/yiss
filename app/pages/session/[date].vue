@@ -234,9 +234,12 @@ watch(() => sessionData.value?.session, (s) => {
   })
 })
 
+const { register: registerPageRefresh } = usePageRefresh()
+
 onMounted(() => {
   fetchSession()
   fetchPrograms()
+  registerPageRefresh(fetchSession)
 })
 
 onBeforeUnmount(() => {
