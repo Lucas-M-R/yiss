@@ -11,6 +11,9 @@ export default defineEventHandler(async (event) => {
   const updates: Record<string, unknown> = {}
   if (body.notes !== undefined) updates.notes = body.notes
 
+  if (Object.keys(updates).length === 0)
+    throw createError({ statusCode: 400, message: 'Aucun champ à mettre à jour' })
+
   const { data, error } = await supabase
     .from('sessions')
     .update(updates)
@@ -19,6 +22,9 @@ export default defineEventHandler(async (event) => {
     .select()
     .single()
 
-  if (error) throw createError({ statusCode: 500, message: error.message })
+  if (error) {
+    if (error.code === 'PGRST116') throw createError({ statusCode: 404, message: 'Session introuvable' })
+    throw createError({ statusCode: 500, message: error.message })
+  }
   return data
 })

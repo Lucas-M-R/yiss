@@ -197,7 +197,8 @@ async function fetchExercises() {
 }
 
 watch(() => sessionData.value?.session, (s) => {
-  if (s?.notes) showSessionNotes.value = true
+  showSessionNotes.value = !!s?.notes
+  openExerciseNotes.value = new Set()
   s?.exercises?.forEach(ex => {
     if (ex.notes) openExerciseNotes.value.add(ex.id)
   })
@@ -206,6 +207,16 @@ watch(() => sessionData.value?.session, (s) => {
 onMounted(() => {
   fetchSession()
   fetchPrograms()
+})
+
+onBeforeUnmount(() => {
+  if (sessionNotesTimer.value) clearTimeout(sessionNotesTimer.value)
+  exerciseNotesTimers.forEach(t => clearTimeout(t))
+  exerciseNotesTimers.clear()
+  saveTimers.forEach(t => clearTimeout(t))
+  saveTimers.clear()
+  setsCountTimers.forEach(t => clearTimeout(t))
+  setsCountTimers.clear()
 })
 
 // ---------------------------------------------------------------------------
@@ -382,7 +393,6 @@ function onExerciseNotesBlur(sessionExerciseId: string) {
 }
 
 async function saveSessionNotes(notes: string) {
-  if (sessionData.value?.session) sessionData.value.session.notes = notes || null
   await $fetch(`/api/sessions/${date.value}`, {
     method: 'PATCH',
     body: { notes: notes || null }
@@ -390,6 +400,7 @@ async function saveSessionNotes(notes: string) {
 }
 
 function onSessionNotesInput(value: string) {
+  if (sessionData.value?.session) sessionData.value.session.notes = value || null
   if (sessionNotesTimer.value) clearTimeout(sessionNotesTimer.value)
   sessionNotesTimer.value = setTimeout(() => saveSessionNotes(value), 1500)
 }

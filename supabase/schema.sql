@@ -168,7 +168,7 @@ select
   s.session_date,
   max(ss.weight_kg)                                        as max_weight,
   sum(ss.reps * ss.weight_kg)                              as volume,
-  count(distinct se.id)                                    as total_sets,
+  count(*)                                                 as total_sets,
   sum(ss.reps)                                             as total_reps
 from session_sets ss
 join session_exercises se on se.id = ss.session_exercise_id
