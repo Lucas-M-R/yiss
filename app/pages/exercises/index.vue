@@ -86,9 +86,14 @@ async function deleteExercise(id: string) {
         <h2 class="text-2xl font-bold text-white">Exercices</h2>
         <p class="text-zinc-400 text-sm mt-1">Bibliothèque d'exercices.</p>
       </div>
-      <UButton size="sm" color="violet" variant="solid" icon="i-lucide-plus" @click="openModal">
-        Nouvel exercice
-      </UButton>
+      <div class="flex items-center gap-2">
+        <UButton size="sm" color="zinc" variant="ghost" icon="i-lucide-settings" to="/exercises/manage">
+          Gérer
+        </UButton>
+        <UButton size="sm" color="violet" variant="solid" icon="i-lucide-plus" @click="openModal">
+          Nouvel exercice
+        </UButton>
+      </div>
     </div>
 
     <!-- Search -->
