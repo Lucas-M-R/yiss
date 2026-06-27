@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs'
-import { serverSupabaseClient } from '#supabase/server'
+import { useSupabaseClient } from '../../utils/supabase'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
   const { email, password } = body
 
   try {
-    const supabase = await serverSupabaseClient(event)
+    const supabase = useSupabaseClient()
     const { data: user, error } = await supabase
       .from('users')
       .select('id, email, display_name, avatar_url, password_hash, partner_id')

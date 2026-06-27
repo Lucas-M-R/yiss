@@ -1,4 +1,4 @@
-import { useSupabaseClient } from '../../utils/supabase'
+import { useSupabaseClient } from '../../../utils/supabase'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
@@ -22,11 +22,16 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403 })
   }
 
-  const { error } = await supabase
-    .from('exercises')
-    .delete()
-    .eq('id', id)
+  const [programDays, sessionExercises] = await Promise.all([
+    supabase.from('program_day_exercises').select('id', { count: 'exact', head: true }).eq('exercise_id', id),
+    supabase.from('session_exercises').select('id', { count: 'exact', head: true }).eq('exercise_id', id),
+  ])
 
-  if (error) throw createError({ statusCode: 500, message: error.message })
-  return { success: true }
+  if (programDays.error) throw createError({ statusCode: 500, message: programDays.error.message })
+  if (sessionExercises.error) throw createError({ statusCode: 500, message: sessionExercises.error.message })
+
+  return {
+    program_days: programDays.count ?? 0,
+    sessions: sessionExercises.count ?? 0,
+  }
 })

@@ -5,6 +5,12 @@ export default defineEventHandler(async (event) => {
   if (!session?.user) throw createError({ statusCode: 401 })
 
   const id = getRouterParam(event, 'id')
+  const body = await readBody(event)
+  if (!body.name?.trim()) throw createError({ statusCode: 400, message: 'Nom requis' })
+  if (body.category !== undefined && !['strength', 'cardio'].includes(body.category)) {
+    throw createError({ statusCode: 400, message: 'Catégorie invalide' })
+  }
+
   const supabase = useSupabaseClient()
 
   const { data: me, error: meError } = await supabase
@@ -22,11 +28,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403 })
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('exercises')
-    .delete()
+    .update({ name: body.name.trim(), category: body.category ?? 'strength' })
     .eq('id', id)
+    .select().single()
 
   if (error) throw createError({ statusCode: 500, message: error.message })
-  return { success: true }
+  return data
 })
