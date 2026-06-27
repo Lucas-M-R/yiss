@@ -12,12 +12,14 @@ export default defineEventHandler(async (event) => {
 
   const supabase = useSupabaseClient()
 
-  const { data: me } = await supabase
+  const { data: me, error: meError } = await supabase
     .from('users').select('partner_id').eq('id', session.user.id).single()
+  if (meError) throw createError({ statusCode: 500, message: meError.message })
   const allowedOwners = [session.user.id, me?.partner_id].filter(Boolean)
 
-  const { data: exercises } = await supabase
+  const { data: exercises, error: exercisesError } = await supabase
     .from('exercises').select('id, created_by').in('id', [sourceId, targetId])
+  if (exercisesError) throw createError({ statusCode: 500, message: exercisesError.message })
   const source = exercises?.find(e => e.id === sourceId)
   const target = exercises?.find(e => e.id === targetId)
   if (!source || !target) throw createError({ statusCode: 404, message: 'Exercice introuvable' })
@@ -27,17 +29,9 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const { error: pdeError } = await supabase
-    .from('program_day_exercises').update({ exercise_id: targetId }).eq('exercise_id', sourceId)
-  if (pdeError) throw createError({ statusCode: 500, message: pdeError.message })
-
-  const { error: seError } = await supabase
-    .from('session_exercises').update({ exercise_id: targetId }).eq('exercise_id', sourceId)
-  if (seError) throw createError({ statusCode: 500, message: seError.message })
-
-  const { error: delError } = await supabase
-    .from('exercises').delete().eq('id', sourceId)
-  if (delError) throw createError({ statusCode: 500, message: delError.message })
+  const { error: mergeError } = await supabase
+    .rpc('merge_exercises', { source_id: sourceId, target_id: targetId })
+  if (mergeError) throw createError({ statusCode: 500, message: mergeError.message })
 
   return { success: true }
 })

@@ -65,13 +65,23 @@ async function saveEdit() {
 const deleteModal = ref(false)
 const deleteTarget = ref<any>(null)
 const deleteUsage = ref<{ program_days: number; sessions: number } | null>(null)
+const deleteUsageLoading = ref(false)
+const deleteUsageError = ref(false)
 const deleting = ref(false)
 
 async function openDeleteModal(ex: any) {
   deleteTarget.value = ex
   deleteUsage.value = null
+  deleteUsageError.value = false
+  deleteUsageLoading.value = true
   deleteModal.value = true
-  deleteUsage.value = await $fetch(`/api/exercises/${ex.id}/usage`)
+  try {
+    deleteUsage.value = await $fetch(`/api/exercises/${ex.id}/usage`)
+  } catch {
+    deleteUsageError.value = true
+  } finally {
+    deleteUsageLoading.value = false
+  }
 }
 
 async function confirmDelete() {
@@ -94,6 +104,8 @@ const mergeModal = ref(false)
 const mergeSource = ref<any>(null)
 const mergeTargetId = ref('')
 const mergeUsage = ref<{ program_days: number; sessions: number } | null>(null)
+const mergeUsageLoading = ref(false)
+const mergeUsageError = ref(false)
 const merging = ref(false)
 
 const mergeTargetOptions = computed(() =>
@@ -106,8 +118,16 @@ async function openMergeModal(ex: any) {
   mergeSource.value = ex
   mergeTargetId.value = ''
   mergeUsage.value = null
+  mergeUsageError.value = false
+  mergeUsageLoading.value = true
   mergeModal.value = true
-  mergeUsage.value = await $fetch(`/api/exercises/${ex.id}/usage`)
+  try {
+    mergeUsage.value = await $fetch(`/api/exercises/${ex.id}/usage`)
+  } catch {
+    mergeUsageError.value = true
+  } finally {
+    mergeUsageLoading.value = false
+  }
 }
 
 async function confirmMerge() {
@@ -218,7 +238,15 @@ async function confirmMerge() {
             Supprimer <span class="font-semibold text-white">{{ deleteTarget?.name }}</span> ?
           </p>
           <UAlert
-            v-if="deleteUsage && (deleteUsage.program_days > 0 || deleteUsage.sessions > 0)"
+            v-if="deleteUsageError"
+            color="red"
+            variant="subtle"
+            icon="i-lucide-triangle-alert"
+            title="Impossible de vérifier l'usage"
+            description="Réessayez plus tard avant de supprimer cet exercice."
+          />
+          <UAlert
+            v-else-if="deleteUsage && (deleteUsage.program_days > 0 || deleteUsage.sessions > 0)"
             color="red"
             variant="subtle"
             icon="i-lucide-triangle-alert"
@@ -230,7 +258,14 @@ async function confirmMerge() {
       <template #footer>
         <div class="flex justify-end gap-2">
           <UButton variant="ghost" color="zinc" @click="deleteModal = false">Annuler</UButton>
-          <UButton color="red" :loading="deleting" @click="confirmDelete">Supprimer</UButton>
+          <UButton
+            color="red"
+            :loading="deleting || deleteUsageLoading"
+            :disabled="deleteUsageLoading || deleteUsageError"
+            @click="confirmDelete"
+          >
+            Supprimer
+          </UButton>
         </div>
       </template>
     </UModal>
@@ -244,7 +279,15 @@ async function confirmMerge() {
             L'historique sera reporté et <span class="font-semibold text-white">{{ mergeSource?.name }}</span> sera supprimé.
           </p>
           <UAlert
-            v-if="mergeUsage && (mergeUsage.program_days > 0 || mergeUsage.sessions > 0)"
+            v-if="mergeUsageError"
+            color="red"
+            variant="subtle"
+            icon="i-lucide-triangle-alert"
+            title="Impossible de vérifier l'usage"
+            description="Réessayez plus tard avant de fusionner cet exercice."
+          />
+          <UAlert
+            v-else-if="mergeUsage && (mergeUsage.program_days > 0 || mergeUsage.sessions > 0)"
             color="amber"
             variant="subtle"
             icon="i-lucide-info"
@@ -264,7 +307,14 @@ async function confirmMerge() {
       <template #footer>
         <div class="flex justify-end gap-2">
           <UButton variant="ghost" color="zinc" @click="mergeModal = false">Annuler</UButton>
-          <UButton color="violet" :loading="merging" :disabled="!mergeTargetId" @click="confirmMerge">Fusionner</UButton>
+          <UButton
+            color="violet"
+            :loading="merging || mergeUsageLoading"
+            :disabled="!mergeTargetId || mergeUsageLoading || mergeUsageError"
+            @click="confirmMerge"
+          >
+            Fusionner
+          </UButton>
         </div>
       </template>
     </UModal>
