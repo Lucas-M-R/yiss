@@ -1,4 +1,5 @@
 import { useSupabaseClient } from '../../utils/supabase'
+import { assertProgramAccess } from '../../utils/access'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
@@ -6,6 +7,7 @@ export default defineEventHandler(async (event) => {
 
   const id = getRouterParam(event, 'id')
   const supabase = useSupabaseClient()
+  await assertProgramAccess(supabase, id, session.user.id)
 
   const { data, error } = await supabase
     .from('programs')
