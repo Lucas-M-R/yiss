@@ -176,3 +176,22 @@ join sessions s            on s.id  = se.session_id
 join exercises e           on e.id  = se.exercise_id
 where ss.reps is not null and ss.weight_kg is not null
 group by ss.user_id, e.id, e.name, s.session_date;
+
+alter view exercise_stats set (security_invoker = on);
+
+-- =============================================================================
+-- SÉCURITÉ : RLS activé sans policy → seul le serveur (clé service_role) accède
+-- aux données ; l'API REST avec les clés anon / authenticated ne voit rien.
+-- =============================================================================
+alter table users                  enable row level security;
+alter table partner_invitations    enable row level security;
+alter table exercises              enable row level security;
+alter table programs               enable row level security;
+alter table program_days           enable row level security;
+alter table program_day_exercises  enable row level security;
+alter table sessions               enable row level security;
+alter table session_participants   enable row level security;
+alter table session_exercises      enable row level security;
+alter table session_sets           enable row level security;
+
+revoke all on all tables in schema public from anon, authenticated;
