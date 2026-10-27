@@ -1,4 +1,5 @@
 import { useSupabaseClient } from '../../utils/supabase'
+import { assertSessionExerciseAccess } from '../../utils/access'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
@@ -15,25 +16,7 @@ export default defineEventHandler(async (event) => {
   if (Object.keys(updates).length === 0)
     throw createError({ statusCode: 400, message: 'Aucun champ à mettre à jour' })
 
-  // Verify user is creator or participant of the session containing this exercise
-  const { data: se } = await supabase
-    .from('session_exercises')
-    .select('session_id, sessions!inner(created_by)')
-    .eq('id', id)
-    .single()
-
-  if (!se) throw createError({ statusCode: 404 })
-
-  const sessionCreatedBy = (se.sessions as { created_by: string }).created_by
-  if (sessionCreatedBy !== session.user.id) {
-    const { data: participant } = await supabase
-      .from('session_participants')
-      .select('user_id')
-      .eq('session_id', se.session_id)
-      .eq('user_id', session.user.id)
-      .maybeSingle()
-    if (!participant) throw createError({ statusCode: 403 })
-  }
+  await assertSessionExerciseAccess(supabase, id, session.user.id)
 
   const { data, error } = await supabase
     .from('session_exercises')

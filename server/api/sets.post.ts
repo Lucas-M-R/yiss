@@ -1,4 +1,5 @@
 import { useSupabaseClient } from '../utils/supabase'
+import { assertSessionExerciseAccess } from '../utils/access'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
@@ -6,6 +7,8 @@ export default defineEventHandler(async (event) => {
 
   const body = await readBody(event)
   const supabase = useSupabaseClient()
+
+  await assertSessionExerciseAccess(supabase, body.session_exercise_id, session.user.id)
 
   // Determine target user (self or partner)
   let targetUserId: string = session.user.id
