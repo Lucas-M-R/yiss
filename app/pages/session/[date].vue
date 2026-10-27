@@ -128,6 +128,8 @@ const saveTimerArgs = new Map<string, [sessionExerciseId: string, setNumber: num
 // Requests in flight per set key, and keys edited again while their request was in flight
 const inFlightSaves = new Map<string, Promise<void>>()
 const dirtyWhileSaving = new Set<string>()
+// Keys whose last save failed and wait for a retry
+const failedSaves = ref(new Set<string>())
 const SET_SAVE_DELAY_MS = 2500
 const SET_RETRY_DELAY_MS = 5000
 let unmounted = false
@@ -561,6 +563,8 @@ async function doSaveSet(key: string, sessionExerciseId: string, setNumber: numb
       }
     })
 
+    if (failedSaves.value.delete(key)) failedSaves.value = new Set(failedSaves.value)
+
     // Only take the id from the server: the local values may have been edited
     // while the request was in flight and must not be overwritten
     if (ex) {
@@ -583,6 +587,7 @@ async function doSaveSet(key: string, sessionExerciseId: string, setNumber: numb
   } catch (e: any) {
     // Network/server error: keep the local value and retry later, unless a newer edit is already queued
     const retryable = !e?.statusCode || e.statusCode >= 500
+    if (retryable) failedSaves.value = new Set([...failedSaves.value, key])
     if (retryable && !unmounted && !dirtyWhileSaving.has(key) && !saveTimers.has(key)) {
       scheduleSave(sessionExerciseId, setNumber, userId, SET_RETRY_DELAY_MS)
     }
@@ -596,6 +601,11 @@ function isSaving(sessionExerciseId: string, setNumber: number): boolean {
   const userId = me.value?.id
   if (!userId) return false
   return saving.value.has(setKey(sessionExerciseId, userId, setNumber))
+}
+
+// Any user of the row (me or partner) waiting for a retry
+function isPendingRetry(sessionExerciseId: string, setNumber: number): boolean {
+  return users.value.some(u => failedSaves.value.has(setKey(sessionExerciseId, u.id, setNumber)))
 }
 
 function isSaved(sessionExerciseId: string, setNumber: number): boolean {
@@ -872,6 +882,12 @@ function onCardioInput(
                       v-if="isSaving(ex.id, n)"
                       name="i-lucide-loader-circle"
                       class="text-xs text-zinc-500 animate-spin"
+                    />
+                    <UIcon
+                      v-else-if="isPendingRetry(ex.id, n)"
+                      name="i-lucide-cloud-off"
+                      class="text-xs text-amber-500/70"
+                      title="Pas encore enregistré, nouvel essai automatique"
                     />
                     <UIcon
                       v-else-if="isSaved(ex.id, n)"
