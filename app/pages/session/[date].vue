@@ -75,6 +75,7 @@ interface Program {
 
 const route = useRoute()
 const date = computed(() => route.params.date as string)
+const toast = useToast()
 
 const formattedDate = computed(() => {
   const d = new Date(date.value + 'T00:00:00')
@@ -123,6 +124,13 @@ const lastSetsMap = ref<Record<string, Record<string, LastSet[]>>>({})
 
 // Debounce timers: key -> timer id
 const saveTimers = new Map<string, ReturnType<typeof setTimeout>>()
+const saveTimerArgs = new Map<string, [sessionExerciseId: string, setNumber: number, userId: string]>()
+// Requests in flight per set key, and keys edited again while their request was in flight
+const inFlightSaves = new Map<string, Promise<void>>()
+const dirtyWhileSaving = new Set<string>()
+const SET_SAVE_DELAY_MS = 2500
+const SET_RETRY_DELAY_MS = 5000
+let unmounted = false
 
 // Inline sets_count editing
 const setsCountTimers = new Map<string, ReturnType<typeof setTimeout>>()
@@ -236,18 +244,29 @@ watch(() => sessionData.value?.session, (s) => {
 
 const { register: registerPageRefresh } = usePageRefresh()
 
+async function refreshSession() {
+  await flushPendingSaves()
+  // A failed save is waiting for its retry: refetching now would overwrite the unsaved value
+  if (saveTimers.size > 0) {
+    toast.add({ title: 'Connexion instable', description: 'Des séries ne sont pas encore enregistrées, réessaie dans un instant.', color: 'orange' })
+    return
+  }
+  await fetchSession()
+}
+
 onMounted(() => {
   fetchSession()
   fetchPrograms()
-  registerPageRefresh(fetchSession)
+  registerPageRefresh(refreshSession)
 })
 
 onBeforeUnmount(() => {
+  unmounted = true
   if (sessionNotesTimer.value) clearTimeout(sessionNotesTimer.value)
   exerciseNotesTimers.forEach(t => clearTimeout(t))
   exerciseNotesTimers.clear()
-  saveTimers.forEach(t => clearTimeout(t))
-  saveTimers.clear()
+  // Send pending set edits instead of dropping them when leaving the page
+  flushPendingSaves()
   setsCountTimers.forEach(t => clearTimeout(t))
   setsCountTimers.clear()
 })
@@ -460,25 +479,30 @@ function isCardio(exercise: SessionExercise): boolean {
   return exercise.exercise?.category?.toLowerCase() === 'cardio'
 }
 
-function scheduleSave(sessionExerciseId: string, setNumber: number, userId: string) {
-  const key = `${sessionExerciseId}-${userId}-${setNumber}`
+function setKey(sessionExerciseId: string, userId: string, setNumber: number) {
+  return `${sessionExerciseId}-${userId}-${setNumber}`
+}
+
+function scheduleSave(sessionExerciseId: string, setNumber: number, userId: string, delay = SET_SAVE_DELAY_MS) {
+  const key = setKey(sessionExerciseId, userId, setNumber)
 
   if (saveTimers.has(key)) {
     clearTimeout(saveTimers.get(key)!)
   }
 
+  saveTimerArgs.set(key, [sessionExerciseId, setNumber, userId])
   saveTimers.set(
     key,
     setTimeout(() => {
       saveTimers.delete(key)
       saveSet(sessionExerciseId, setNumber, userId)
-    }, 1500)
+    }, delay)
   )
 }
 
 function onSetBlur(sessionExerciseId: string, setNumber: number, userId: string) {
   // Save immediately on blur
-  const key = `${sessionExerciseId}-${userId}-${setNumber}`
+  const key = setKey(sessionExerciseId, userId, setNumber)
   if (saveTimers.has(key)) {
     clearTimeout(saveTimers.get(key)!)
     saveTimers.delete(key)
@@ -486,8 +510,38 @@ function onSetBlur(sessionExerciseId: string, setNumber: number, userId: string)
   }
 }
 
-async function saveSet(sessionExerciseId: string, setNumber: number, userId: string) {
-  const key = `${sessionExerciseId}-${userId}-${setNumber}`
+// Fires every debounced save now and waits until nothing is in flight anymore
+async function flushPendingSaves() {
+  for (const [key, timer] of [...saveTimers]) {
+    clearTimeout(timer)
+    saveTimers.delete(key)
+    const [sessionExerciseId, setNumber, userId] = saveTimerArgs.get(key)!
+    saveSet(sessionExerciseId, setNumber, userId)
+  }
+  while (inFlightSaves.size > 0) {
+    await Promise.all(inFlightSaves.values())
+  }
+}
+
+function saveSet(sessionExerciseId: string, setNumber: number, userId: string): Promise<void> {
+  const key = setKey(sessionExerciseId, userId, setNumber)
+
+  // One request per set at a time: if one is in flight, resend once it's done with the latest values
+  const pending = inFlightSaves.get(key)
+  if (pending) {
+    dirtyWhileSaving.add(key)
+    return pending
+  }
+
+  const promise = doSaveSet(key, sessionExerciseId, setNumber, userId).finally(() => {
+    inFlightSaves.delete(key)
+    if (dirtyWhileSaving.delete(key)) saveSet(sessionExerciseId, setNumber, userId)
+  })
+  inFlightSaves.set(key, promise)
+  return promise
+}
+
+async function doSaveSet(key: string, sessionExerciseId: string, setNumber: number, userId: string) {
   saving.value = new Set([...saving.value, key])
 
   try {
@@ -507,22 +561,30 @@ async function saveSet(sessionExerciseId: string, setNumber: number, userId: str
       }
     })
 
+    // Only take the id from the server: the local values may have been edited
+    // while the request was in flight and must not be overwritten
     if (ex) {
-      const idx = ex.sets.findIndex(s => s.user_id === userId && s.set_number === setNumber)
-      if (idx >= 0) {
-        ex.sets[idx] = result
+      const local = ex.sets.find(s => s.user_id === userId && s.set_number === setNumber)
+      if (local) {
+        local.id = result.id
       } else {
         ex.sets.push(result)
       }
     }
 
-    // Green flash (only for me)
-    if (userId === me.value?.id) {
+    // Green flash (only for me), unless a newer edit still has to be saved
+    if (userId === me.value?.id && !dirtyWhileSaving.has(key) && !saveTimers.has(key)) {
       saved.value = new Set([...saved.value, key])
       setTimeout(() => {
         saved.value.delete(key)
         saved.value = new Set(saved.value)
       }, 1200)
+    }
+  } catch (e: any) {
+    // Network/server error: keep the local value and retry later, unless a newer edit is already queued
+    const retryable = !e?.statusCode || e.statusCode >= 500
+    if (retryable && !unmounted && !dirtyWhileSaving.has(key) && !saveTimers.has(key)) {
+      scheduleSave(sessionExerciseId, setNumber, userId, SET_RETRY_DELAY_MS)
     }
   } finally {
     saving.value.delete(key)
@@ -533,13 +595,13 @@ async function saveSet(sessionExerciseId: string, setNumber: number, userId: str
 function isSaving(sessionExerciseId: string, setNumber: number): boolean {
   const userId = me.value?.id
   if (!userId) return false
-  return saving.value.has(`${sessionExerciseId}-${userId}-${setNumber}`)
+  return saving.value.has(setKey(sessionExerciseId, userId, setNumber))
 }
 
 function isSaved(sessionExerciseId: string, setNumber: number): boolean {
   const userId = me.value?.id
   if (!userId) return false
-  return saved.value.has(`${sessionExerciseId}-${userId}-${setNumber}`)
+  return saved.value.has(setKey(sessionExerciseId, userId, setNumber))
 }
 
 // ---------------------------------------------------------------------------
