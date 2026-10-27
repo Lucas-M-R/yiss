@@ -45,23 +45,27 @@ const categoryOptions = [
 ]
 
 function openModal() {
+  if (saving.value) return
   editingId.value = null
   form.value = { name: '', category: 'strength' }
   modalOpen.value = true
 }
 
 function openEditModal(ex: any) {
+  if (saving.value) return
   editingId.value = ex.id
   form.value = { name: ex.name, category: ex.category === 'cardio' ? 'cardio' : 'strength' }
   modalOpen.value = true
 }
 
 async function submitExercise() {
-  if (!form.value.name.trim()) return
+  if (saving.value || !form.value.name.trim()) return
+  // Captured up front: the modal state may change while the request is in flight
+  const id = editingId.value
   saving.value = true
   try {
-    if (editingId.value) {
-      await $fetch(`/api/exercises/${editingId.value}`, {
+    if (id) {
+      await $fetch(`/api/exercises/${id}`, {
         method: 'PATCH',
         body: { name: form.value.name },
       })
@@ -73,7 +77,7 @@ async function submitExercise() {
     }
     modalOpen.value = false
     await refresh()
-    toast.add({ title: editingId.value ? 'Exercice modifié' : 'Exercice créé', color: 'green' })
+    toast.add({ title: id ? 'Exercice modifié' : 'Exercice créé', color: 'green' })
   } catch (e: any) {
     toast.add({ title: 'Erreur', description: e?.data?.message ?? e.message, color: 'red' })
   } finally {
@@ -182,6 +186,7 @@ async function deleteExercise(id: string) {
               placeholder="Ex : Squat barre"
               class="w-full"
               autofocus
+              :disabled="saving"
               @keyup.enter="submitExercise"
             />
           </UFormField>
@@ -201,7 +206,7 @@ async function deleteExercise(id: string) {
       </template>
       <template #footer>
         <div class="flex justify-end gap-2">
-          <UButton variant="ghost" color="zinc" @click="modalOpen = false">Annuler</UButton>
+          <UButton variant="ghost" color="zinc" :disabled="saving" @click="modalOpen = false">Annuler</UButton>
           <UButton color="violet" :loading="saving" :disabled="!form.name.trim()" @click="submitExercise">
             {{ editingId ? 'Enregistrer' : 'Créer' }}
           </UButton>

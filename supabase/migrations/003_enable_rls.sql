@@ -25,3 +25,5 @@ alter view public.exercise_stats set (security_invoker = on);
 
 -- Défense en profondeur : aucun droit pour les rôles exposés par l'API REST
 revoke all on all tables in schema public from anon, authenticated;
+-- …et sur les tables créées plus tard, au cas où une migration oublierait RLS
+alter default privileges in schema public revoke all on tables from anon, authenticated;

@@ -195,3 +195,5 @@ alter table session_exercises      enable row level security;
 alter table session_sets           enable row level security;
 
 revoke all on all tables in schema public from anon, authenticated;
+-- …et sur les tables créées plus tard, au cas où une migration oublierait RLS
+alter default privileges in schema public revoke all on tables from anon, authenticated;

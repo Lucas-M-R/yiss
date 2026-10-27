@@ -256,14 +256,21 @@ async function refreshSession() {
   await fetchSession()
 }
 
+// The app can be backgrounded or killed at any time on mobile: send pending edits right away
+function onVisibilityChange() {
+  if (document.visibilityState === 'hidden') flushPendingSaves()
+}
+
 onMounted(() => {
   fetchSession()
   fetchPrograms()
   registerPageRefresh(refreshSession)
+  document.addEventListener('visibilitychange', onVisibilityChange)
 })
 
 onBeforeUnmount(() => {
   unmounted = true
+  document.removeEventListener('visibilitychange', onVisibilityChange)
   if (sessionNotesTimer.value) clearTimeout(sessionNotesTimer.value)
   exerciseNotesTimers.forEach(t => clearTimeout(t))
   exerciseNotesTimers.clear()
@@ -552,6 +559,9 @@ async function doSaveSet(key: string, sessionExerciseId: string, setNumber: numb
 
     const result = await $fetch<SessionSet>('/api/sets', {
       method: 'POST',
+      // Lets the request finish if the page is closed, and frees the set if the network hangs
+      keepalive: true,
+      timeout: 15_000,
       body: {
         session_exercise_id: sessionExerciseId,
         set_number: setNumber,
@@ -587,7 +597,12 @@ async function doSaveSet(key: string, sessionExerciseId: string, setNumber: numb
   } catch (e: any) {
     // Network/server error: keep the local value and retry later, unless a newer edit is already queued
     const retryable = !e?.statusCode || e.statusCode >= 500
-    if (retryable) failedSaves.value = new Set([...failedSaves.value, key])
+    if (retryable) {
+      failedSaves.value = new Set([...failedSaves.value, key])
+    } else {
+      if (failedSaves.value.delete(key)) failedSaves.value = new Set(failedSaves.value)
+      toast.add({ title: 'Série non enregistrée', description: e?.data?.message ?? 'Recharge la page puis saisis à nouveau la valeur.', color: 'red' })
+    }
     if (retryable && !unmounted && !dirtyWhileSaving.has(key) && !saveTimers.has(key)) {
       scheduleSave(sessionExerciseId, setNumber, userId, SET_RETRY_DELAY_MS)
     }
