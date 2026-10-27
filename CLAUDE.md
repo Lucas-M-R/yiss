@@ -102,6 +102,7 @@ NUXT_OAUTH_GOOGLE_CLIENT_SECRET=
 2. **Import de données** — page existe, à tester
 3. **Auth Google : problème Firefox** — Google OAuth fonctionne sur Chromium mais pas sur Firefox. Désactivé pour l'instant.
 4. **Domaine Resend** — En mode test, les emails ne sont envoyés qu'à l'adresse vérifiée dans Resend. Il faut vérifier un domaine pour envoyer à n'importe quelle adresse.
+5. **Migration `003_enable_rls.sql` à appliquer** — Active RLS sur toutes les tables (alertes du Security Advisor Supabase). À exécuter dans le SQL Editor ; vérifier avant que `NUXT_SUPABASE_SERVICE_KEY` est bien la clé `service_role`, sinon l'app ne voit plus aucune donnée.
 
 ### Configuration Magic Link (Resend)
 
