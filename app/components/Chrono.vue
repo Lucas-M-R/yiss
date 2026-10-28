@@ -6,7 +6,7 @@ const { isOpen, time, isRunning, toggle, reset, close, formatTime } = useChrono(
 // seconds without interaction the screen goes black and the time keeps moving
 // around to avoid burn-in.
 const IDLE_DELAY_MS = 3000
-const MOVE_INTERVAL_MS = 20000
+const MOVE_INTERVAL_MS = 10000
 
 const idle = ref(false)
 const position = ref({ top: 40, left: 50 })
