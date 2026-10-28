@@ -113,6 +113,15 @@ const creatingExercise = ref(false)
 const programs = ref<Program[]>([])
 const selectedProgramDayId = ref<string | null>(null)
 
+// Same-weekday session from a previous week, offered when starting a new one
+interface PreviousSession {
+  id: string
+  session_date: string
+  exercises: { name: string; sets_count: number }[]
+}
+const previousSession = ref<PreviousSession | null>(null)
+const copyingPrevious = ref(false)
+
 // Last sets per session exercise: sessionExerciseId -> userId -> set[]
 interface LastSet {
   set_number: number
@@ -212,11 +221,20 @@ async function fetchSession() {
   loading.value = true
   try {
     sessionData.value = await $fetch<SessionData>(`/api/sessions/${date.value}`)
+    if (!sessionData.value?.session) await fetchPreviousSession()
     // Fetch last sets for all exercises in parallel
     const exercises = sessionData.value?.session?.exercises ?? []
     await Promise.all(exercises.map(ex => fetchLastSets(ex.exercise_id, ex.id)))
   } finally {
     loading.value = false
+  }
+}
+
+async function fetchPreviousSession() {
+  try {
+    previousSession.value = await $fetch<PreviousSession | null>(`/api/sessions/${date.value}/previous`)
+  } catch {
+    previousSession.value = null
   }
 }
 
@@ -284,11 +302,23 @@ onBeforeUnmount(() => {
 // Session creation
 // ---------------------------------------------------------------------------
 
-async function startSession() {
-  creating.value = true
+const previousSessionLabel = computed(() => {
+  const prev = previousSession.value
+  if (!prev) return ''
+  const prevDate = new Date(prev.session_date + 'T00:00:00')
+  const weekday = prevDate.toLocaleDateString('fr-FR', { weekday: 'long' })
+  const daysAgo = Math.round((new Date(date.value + 'T00:00:00').getTime() - prevDate.getTime()) / 86400000)
+  if (daysAgo === 7) return `Reprendre la séance de ${weekday} dernier`
+  return `Reprendre la séance du ${weekday} ${prevDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`
+})
+
+async function startSession(copyFromSessionId?: string) {
+  const loadingRef = copyFromSessionId ? copyingPrevious : creating
+  loadingRef.value = true
   try {
     const body: Record<string, unknown> = {}
-    if (selectedProgramDayId.value) body.program_day_id = selectedProgramDayId.value
+    if (copyFromSessionId) body.copy_from_session_id = copyFromSessionId
+    else if (selectedProgramDayId.value) body.program_day_id = selectedProgramDayId.value
 
     const newSession = await $fetch<Session>(`/api/sessions/${date.value}`, {
       method: 'POST',
@@ -297,8 +327,10 @@ async function startSession() {
 
     // Refresh to get full session data including me/partner
     await fetchSession()
+  } catch (e: any) {
+    toast.add({ title: 'Impossible de créer la séance', description: e?.data?.message ?? e?.message, color: 'red' })
   } finally {
-    creating.value = false
+    loadingRef.value = false
   }
 }
 
@@ -753,6 +785,30 @@ function onCardioInput(
             <p class="text-zinc-500 text-sm mt-1">Démarrez une séance pour commencer à enregistrer.</p>
           </div>
 
+          <!-- Repeat the same weekday session from a previous week -->
+          <div v-if="previousSession" class="w-full max-w-xs space-y-2">
+            <UButton
+              block
+              size="md"
+              color="violet"
+              variant="soft"
+              icon="i-lucide-repeat"
+              :loading="copyingPrevious"
+              :disabled="creating"
+              @click="startSession(previousSession.id)"
+            >
+              {{ previousSessionLabel }}
+            </UButton>
+            <p class="text-xs text-zinc-500 text-left">
+              {{ previousSession.exercises.map(e => `${e.name} (${e.sets_count})`).join(' · ') }}
+            </p>
+            <div class="flex items-center gap-2 pt-2">
+              <div class="h-px flex-1 bg-zinc-800" />
+              <span class="text-xs text-zinc-600">ou</span>
+              <div class="h-px flex-1 bg-zinc-800" />
+            </div>
+          </div>
+
           <!-- Program day selector -->
           <div v-if="programDayOptions.length" class="w-full max-w-xs space-y-2">
             <p class="text-xs text-zinc-400 text-left">Charger un programme (optionnel)</p>
@@ -772,7 +828,8 @@ function onCardioInput(
             variant="solid"
             icon="i-lucide-play"
             :loading="creating"
-            @click="startSession"
+            :disabled="copyingPrevious"
+            @click="startSession()"
           >
             Commencer la séance
           </UButton>
