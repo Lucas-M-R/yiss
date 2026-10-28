@@ -48,7 +48,9 @@ export default defineEventHandler(async (event) => {
   // Undo the session if its exercises could not be copied, so that a retry is not
   // blocked by the unique (session_date, created_by) constraint
   async function failAndRollback(message: string): Promise<never> {
-    await supabase.from('sessions').delete().eq('id', newSession.id)
+    const { error: rollbackError } = await supabase.from('sessions').delete().eq('id', newSession.id)
+    // Nothing more can be done here: the empty session stays and has to be deleted by hand
+    if (rollbackError) console.error(`Rollback failed for session ${newSession.id}:`, rollbackError.message)
     throw createError({ statusCode: 500, message })
   }
 
