@@ -9,10 +9,14 @@ export default defineEventHandler(async (event) => {
   if (!session?.user) throw createError({ statusCode: 401 })
 
   const date = getRouterParam(event, 'date') // YYYY-MM-DD
-  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw createError({ statusCode: 400, message: 'Date invalide' })
+  const parsed = new Date(`${date}T00:00:00Z`)
+  // The round trip rejects impossible dates like 2026-13-01 or 2026-02-31
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date) || isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
+    throw createError({ statusCode: 400, message: 'Date invalide' })
+  }
 
   const sameWeekdayDates = Array.from({ length: WEEKS_BACK }, (_, i) => {
-    const d = new Date(`${date}T00:00:00Z`)
+    const d = new Date(parsed)
     d.setUTCDate(d.getUTCDate() - 7 * (i + 1))
     return d.toISOString().slice(0, 10)
   })

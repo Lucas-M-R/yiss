@@ -327,6 +327,8 @@ async function startSession(copyFromSessionId?: string) {
 
     // Refresh to get full session data including me/partner
     await fetchSession()
+  } catch (e: any) {
+    toast.add({ title: 'Impossible de créer la séance', description: e?.data?.message ?? e?.message, color: 'red' })
   } finally {
     loadingRef.value = false
   }

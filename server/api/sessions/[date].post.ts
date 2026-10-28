@@ -45,16 +45,24 @@ export default defineEventHandler(async (event) => {
   }
   await supabase.from('session_participants').insert(participants)
 
+  // Undo the session if its exercises could not be copied, so that a retry is not
+  // blocked by the unique (session_date, created_by) constraint
+  async function failAndRollback(message: string): Promise<never> {
+    await supabase.from('sessions').delete().eq('id', newSession.id)
+    throw createError({ statusCode: 500, message })
+  }
+
   if (source) {
     // Same exercises, order and number of sets as the copied session (set values are not copied)
-    const { data: sourceExercises } = await supabase
+    const { data: sourceExercises, error: readError } = await supabase
       .from('session_exercises')
       .select('exercise_id, sets_count, sort_order')
       .eq('session_id', source.id)
       .order('sort_order')
+    if (readError) await failAndRollback(readError.message)
 
     if (sourceExercises?.length) {
-      await supabase.from('session_exercises').insert(
+      const { error: copyError } = await supabase.from('session_exercises').insert(
         sourceExercises.map((se: { exercise_id: string; sets_count: number; sort_order: number }) => ({
           session_id: newSession.id,
           exercise_id: se.exercise_id,
@@ -62,6 +70,7 @@ export default defineEventHandler(async (event) => {
           sort_order: se.sort_order
         }))
       )
+      if (copyError) await failAndRollback(copyError.message)
     }
   } else if (body.program_day_id) {
     // If created from a program day, pre-populate exercises
