@@ -14,7 +14,8 @@ let idleTimer: ReturnType<typeof setTimeout> | null = null
 let moveTimer: ReturnType<typeof setInterval> | null = null
 
 function randomPosition() {
-  // Percentages of the viewport, kept away from the edges so the text stays visible
+  // Percentages of the viewport for the text center. The font size scales with the
+  // viewport width (min(14vw, 3.75rem)), so even "100:00" stays within the screen
   position.value = { top: 15 + Math.random() * 65, left: 30 + Math.random() * 40 }
 }
 
@@ -51,9 +52,15 @@ function onActivity() {
   if (!idle.value) scheduleIdle()
 }
 
-function onKeydown() {
-  if (idle.value) wake()
-  else scheduleIdle()
+function onKeydown(e: KeyboardEvent) {
+  if (idle.value) {
+    // The key only wakes the screen: it must not also activate the focused button
+    e.preventDefault()
+    e.stopPropagation()
+    wake()
+  } else {
+    scheduleIdle()
+  }
 }
 
 const activityEvents = ['pointerdown', 'pointermove', 'wheel', 'scroll'] as const
@@ -128,7 +135,7 @@ watch([isOpen, isRunning], () => {
         @click.stop.prevent="wake"
       >
         <div
-          class="absolute -translate-x-1/2 -translate-y-1/2 text-6xl font-mono tabular-nums text-zinc-600"
+          class="absolute -translate-x-1/2 -translate-y-1/2 text-[min(14vw,3.75rem)] font-mono tabular-nums text-zinc-600 whitespace-nowrap"
           :style="{ top: `${position.top}%`, left: `${position.left}%` }"
         >
           {{ formatTime(time) }}
