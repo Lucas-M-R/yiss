@@ -30,10 +30,10 @@ async function createProgram() {
     })
     modalOpen.value = false
     await refresh()
-    toast.add({ title: 'Programme créé', color: 'green' })
+    toast.add({ title: 'Programme créé', color: 'success' })
     router.push(`/programs/${(created as any).id}`)
   } catch (e: any) {
-    toast.add({ title: 'Erreur', description: e?.data?.message ?? e.message, color: 'red' })
+    toast.add({ title: 'Erreur', description: e?.data?.message ?? e.message, color: 'error' })
   } finally {
     saving.value = false
   }
@@ -48,7 +48,7 @@ async function createProgram() {
         <h2 class="text-2xl font-bold text-white">Programmes</h2>
         <p class="text-zinc-400 text-sm mt-1">Gérez vos programmes d'entraînement.</p>
       </div>
-      <UButton size="sm" color="violet" variant="solid" icon="i-lucide-plus" @click="openModal">
+      <UButton size="sm" color="primary" variant="solid" icon="i-lucide-plus" @click="openModal">
         Nouveau programme
       </UButton>
     </div>
@@ -67,7 +67,7 @@ async function createProgram() {
             <span class="font-semibold text-white truncate">{{ program.name }}</span>
           </div>
           <div class="flex items-center gap-2 shrink-0">
-            <UBadge v-if="program.is_shared" label="Partagé" color="violet" variant="subtle" size="xs" />
+            <UBadge v-if="program.is_shared" label="Partagé" color="primary" variant="subtle" size="xs" />
             <UIcon name="i-lucide-chevron-right" class="text-zinc-500" />
           </div>
         </div>
@@ -76,7 +76,7 @@ async function createProgram() {
             v-for="day in program.days"
             :key="day.id"
             :label="day.label"
-            color="zinc"
+            color="neutral"
             variant="subtle"
             size="xs"
           />
@@ -90,7 +90,7 @@ async function createProgram() {
           <UIcon name="i-lucide-list-checks" class="text-4xl text-violet-400" />
           <p class="text-white font-medium">Aucun programme créé</p>
           <p class="text-zinc-500 text-sm">Créez votre premier programme d'entraînement.</p>
-          <UButton size="sm" color="violet" variant="solid" icon="i-lucide-plus" @click="openModal">
+          <UButton size="sm" color="primary" variant="solid" icon="i-lucide-plus" @click="openModal">
             Nouveau programme
           </UButton>
         </div>
@@ -117,14 +117,14 @@ async function createProgram() {
           </UFormField>
           <div class="flex items-center justify-between py-2">
             <span class="text-sm text-zinc-300">Partagé avec le/la partenaire</span>
-            <UToggle v-model="form.is_shared" color="violet" />
+            <UToggle v-model="form.is_shared" color="primary" />
           </div>
         </div>
       </template>
       <template #footer>
         <div class="flex justify-end gap-2">
-          <UButton variant="ghost" color="zinc" @click="modalOpen = false">Annuler</UButton>
-          <UButton color="violet" :loading="saving" :disabled="!form.name.trim()" @click="createProgram">
+          <UButton variant="ghost" color="neutral" @click="modalOpen = false">Annuler</UButton>
+          <UButton color="primary" :loading="saving" :disabled="!form.name.trim()" @click="createProgram">
             Créer
           </UButton>
         </div>

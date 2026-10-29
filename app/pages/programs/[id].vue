@@ -35,9 +35,9 @@ async function saveName() {
     })
     await refresh()
     editingName.value = false
-    toast.add({ title: 'Nom mis à jour', color: 'green' })
+    toast.add({ title: 'Nom mis à jour', color: 'success' })
   } catch (e: any) {
-    toast.add({ title: 'Erreur', description: e?.data?.message ?? e.message, color: 'red' })
+    toast.add({ title: 'Erreur', description: e?.data?.message ?? e.message, color: 'error' })
   } finally {
     savingName.value = false
   }
@@ -55,7 +55,7 @@ async function toggleShared(val: boolean) {
     })
     await refresh()
   } catch (e: any) {
-    toast.add({ title: 'Erreur', description: e?.data?.message ?? e.message, color: 'red' })
+    toast.add({ title: 'Erreur', description: e?.data?.message ?? e.message, color: 'error' })
   } finally {
     savingShared.value = false
   }
@@ -69,10 +69,10 @@ async function deleteProgram() {
   deletingProgram.value = true
   try {
     await $fetch(`/api/programs/${programId}`, { method: 'DELETE' })
-    toast.add({ title: 'Programme supprimé', color: 'green' })
+    toast.add({ title: 'Programme supprimé', color: 'success' })
     router.push('/programs')
   } catch (e: any) {
-    toast.add({ title: 'Erreur', description: e?.data?.message ?? e.message, color: 'red' })
+    toast.add({ title: 'Erreur', description: e?.data?.message ?? e.message, color: 'error' })
     deletingProgram.value = false
   }
 }
@@ -94,9 +94,9 @@ async function addDay() {
     newDayLabel.value = ''
     showAddDay.value = false
     await refresh()
-    toast.add({ title: 'Jour ajouté', color: 'green' })
+    toast.add({ title: 'Jour ajouté', color: 'success' })
   } catch (e: any) {
-    toast.add({ title: 'Erreur', description: e?.data?.message ?? e.message, color: 'red' })
+    toast.add({ title: 'Erreur', description: e?.data?.message ?? e.message, color: 'error' })
   } finally {
     addingDay.value = false
   }
@@ -140,9 +140,9 @@ async function addExercise() {
     })
     exModal.value = false
     await refresh()
-    toast.add({ title: 'Exercice ajouté', color: 'green' })
+    toast.add({ title: 'Exercice ajouté', color: 'success' })
   } catch (e: any) {
-    toast.add({ title: 'Erreur', description: e?.data?.message ?? e.message, color: 'red' })
+    toast.add({ title: 'Erreur', description: e?.data?.message ?? e.message, color: 'error' })
   } finally {
     addingEx.value = false
   }
@@ -153,9 +153,9 @@ async function removeExercise(exId: string, dayId: string) {
   try {
     await $fetch(`/api/days/${dayId}/exercises/${exId}`, { method: 'DELETE' })
     await refresh()
-    toast.add({ title: 'Exercice retiré', color: 'green' })
+    toast.add({ title: 'Exercice retiré', color: 'success' })
   } catch (e: any) {
-    toast.add({ title: 'Erreur', description: e?.data?.message ?? e.message, color: 'red' })
+    toast.add({ title: 'Erreur', description: e?.data?.message ?? e.message, color: 'error' })
   }
 }
 
@@ -177,7 +177,7 @@ const accordionItems = computed(() =>
     <!-- Back -->
     <UButton
       variant="ghost"
-      color="zinc"
+      color="neutral"
       icon="i-lucide-arrow-left"
       size="sm"
       @click="router.push('/programs')"
@@ -192,7 +192,7 @@ const accordionItems = computed(() =>
         <div class="flex-1 min-w-0">
           <div v-if="!editingName" class="flex items-center gap-2">
             <h2 class="text-2xl font-bold text-white truncate">{{ program.name }}</h2>
-            <UButton icon="i-lucide-pencil" size="xs" variant="ghost" color="zinc" @click="startEditName" />
+            <UButton icon="i-lucide-pencil" size="xs" variant="ghost" color="neutral" @click="startEditName" />
           </div>
           <div v-else class="flex items-center gap-2">
             <UInput
@@ -202,14 +202,14 @@ const accordionItems = computed(() =>
               @keyup.enter="saveName"
               @keyup.escape="editingName = false"
             />
-            <UButton icon="i-lucide-check" size="xs" color="violet" :loading="savingName" @click="saveName" />
-            <UButton icon="i-lucide-x" size="xs" variant="ghost" color="zinc" @click="editingName = false" />
+            <UButton icon="i-lucide-check" size="xs" color="primary" :loading="savingName" @click="saveName" />
+            <UButton icon="i-lucide-x" size="xs" variant="ghost" color="neutral" @click="editingName = false" />
           </div>
         </div>
         <UButton
           icon="i-lucide-trash-2"
           size="xs"
-          color="red"
+          color="error"
           variant="ghost"
           :loading="deletingProgram"
           @click="deleteProgram"
@@ -221,7 +221,7 @@ const accordionItems = computed(() =>
         <span class="text-sm text-zinc-300">Partagé avec le/la partenaire</span>
         <UToggle
           :model-value="program.is_shared"
-          color="violet"
+          color="primary"
           :disabled="savingShared"
           @update:model-value="toggleShared"
         />
@@ -231,7 +231,7 @@ const accordionItems = computed(() =>
       <div class="space-y-3">
         <div class="flex items-center justify-between">
           <h3 class="text-sm font-semibold text-zinc-400 uppercase tracking-widest">Jours</h3>
-          <UButton size="xs" color="violet" variant="ghost" icon="i-lucide-plus" @click="showAddDay = !showAddDay">
+          <UButton size="xs" color="primary" variant="ghost" icon="i-lucide-plus" @click="showAddDay = !showAddDay">
             Ajouter un jour
           </UButton>
         </div>
@@ -246,10 +246,10 @@ const accordionItems = computed(() =>
             @keyup.enter="addDay"
             @keyup.escape="showAddDay = false"
           />
-          <UButton color="violet" size="sm" :loading="addingDay" :disabled="!newDayLabel.trim()" @click="addDay">
+          <UButton color="primary" size="sm" :loading="addingDay" :disabled="!newDayLabel.trim()" @click="addDay">
             OK
           </UButton>
-          <UButton variant="ghost" color="zinc" size="sm" @click="showAddDay = false">
+          <UButton variant="ghost" color="neutral" size="sm" @click="showAddDay = false">
             <UIcon name="i-lucide-x" />
           </UButton>
         </div>
@@ -279,12 +279,12 @@ const accordionItems = computed(() =>
                 >
                   <div class="flex items-center gap-3 min-w-0">
                     <span class="text-sm text-white truncate">{{ pde.exercise?.name }}</span>
-                    <UBadge :label="`${pde.default_sets} séries`" color="zinc" variant="subtle" size="xs" />
+                    <UBadge :label="`${pde.default_sets} séries`" color="neutral" variant="subtle" size="xs" />
                   </div>
                   <UButton
                     icon="i-lucide-x"
                     size="xs"
-                    color="red"
+                    color="error"
                     variant="ghost"
                     @click.stop="removeExercise(pde.id, item.day.id)"
                   />
@@ -295,7 +295,7 @@ const accordionItems = computed(() =>
               <!-- Add exercise button -->
               <UButton
                 size="xs"
-                color="violet"
+                color="primary"
                 variant="outline"
                 icon="i-lucide-plus"
                 class="w-full justify-center"
@@ -349,9 +349,9 @@ const accordionItems = computed(() =>
       </template>
       <template #footer>
         <div class="flex justify-end gap-2">
-          <UButton variant="ghost" color="zinc" @click="exModal = false">Annuler</UButton>
+          <UButton variant="ghost" color="neutral" @click="exModal = false">Annuler</UButton>
           <UButton
-            color="violet"
+            color="primary"
             :loading="addingEx"
             :disabled="!exForm.exercise_id"
             @click="addExercise"

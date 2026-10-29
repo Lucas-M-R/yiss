@@ -268,7 +268,7 @@ async function refreshSession() {
   await flushPendingSaves()
   // A failed save is waiting for its retry: refetching now would overwrite the unsaved value
   if (saveTimers.size > 0) {
-    toast.add({ title: 'Connexion instable', description: 'Des séries ne sont pas encore enregistrées, réessaie dans un instant.', color: 'orange' })
+    toast.add({ title: 'Connexion instable', description: 'Des séries ne sont pas encore enregistrées, réessaie dans un instant.', color: 'warning' })
     return
   }
   await fetchSession()
@@ -328,7 +328,7 @@ async function startSession(copyFromSessionId?: string) {
     // Refresh to get full session data including me/partner
     await fetchSession()
   } catch (e: any) {
-    toast.add({ title: 'Impossible de créer la séance', description: e?.data?.message ?? e?.message, color: 'red' })
+    toast.add({ title: 'Impossible de créer la séance', description: e?.data?.message ?? e?.message, color: 'error' })
   } finally {
     loadingRef.value = false
   }
@@ -658,7 +658,7 @@ async function doSaveSet(key: string, sessionExerciseId: string, setNumber: numb
       failedSaves.value = new Set([...failedSaves.value, key])
     } else {
       if (failedSaves.value.delete(key)) failedSaves.value = new Set(failedSaves.value)
-      toast.add({ title: 'Série non enregistrée', description: e?.data?.message ?? 'Recharge la page puis saisis à nouveau la valeur.', color: 'red' })
+      toast.add({ title: 'Série non enregistrée', description: e?.data?.message ?? 'Recharge la page puis saisis à nouveau la valeur.', color: 'error' })
     }
     if (retryable && !unmounted && !dirtyWhileSaving.has(key) && !saveTimers.has(key)) {
       scheduleSave(sessionExerciseId, setNumber, userId, SET_RETRY_DELAY_MS)
@@ -815,7 +815,7 @@ function onCardioInput(
             <UButton
               block
               size="md"
-              color="violet"
+              color="primary"
               variant="soft"
               icon="i-lucide-repeat"
               :loading="copyingPrevious"
@@ -849,7 +849,7 @@ function onCardioInput(
 
           <UButton
             size="md"
-            color="violet"
+            color="primary"
             variant="solid"
             icon="i-lucide-play"
             :loading="creating"
@@ -1126,7 +1126,7 @@ function onCardioInput(
         <UButton
           icon="i-lucide-plus"
           variant="outline"
-          color="violet"
+          color="primary"
           size="sm"
           @click="openAddModal"
         >
@@ -1135,7 +1135,7 @@ function onCardioInput(
         <UButton
           icon="i-lucide-message-square"
           variant="ghost"
-          :color="showSessionNotes || session?.notes ? 'violet' : 'neutral'"
+          :color="showSessionNotes || session?.notes ? 'primary' : 'neutral'"
           size="sm"
           @click="showSessionNotes = !showSessionNotes"
         >
@@ -1182,7 +1182,7 @@ function onCardioInput(
             <UButton
               v-else
               icon="i-lucide-plus"
-              color="violet"
+              color="primary"
               variant="outline"
               class="w-full"
               :loading="creatingExercise"
@@ -1210,7 +1210,7 @@ function onCardioInput(
         <div class="flex gap-2 justify-end w-full">
           <UButton variant="ghost" color="neutral" @click="closeAddModal">Annuler</UButton>
           <UButton
-            color="violet"
+            color="primary"
             :disabled="!selectedExerciseId"
             :loading="addingExercise"
             @click="addExercise"

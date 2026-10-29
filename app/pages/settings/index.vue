@@ -172,7 +172,7 @@ async function logout() {
               @keyup.enter="saveName"
             />
             <UButton
-              color="violet"
+              color="primary"
               variant="solid"
               :loading="isSavingName"
               :disabled="!displayName.trim()"
@@ -205,7 +205,7 @@ async function logout() {
               @keyup.enter="searchUser"
             />
             <UButton
-              color="violet"
+              color="primary"
               variant="outline"
               :loading="isSearching"
               :disabled="!searchEmail.trim()"
@@ -232,7 +232,7 @@ async function logout() {
               <p class="text-zinc-400 text-xs truncate">{{ foundUser.email }}</p>
             </div>
             <UButton
-              color="violet"
+              color="primary"
               variant="solid"
               size="sm"
               :loading="isLinking"
@@ -310,7 +310,7 @@ async function logout() {
               Définissez un mot de passe pour vous connecter plus rapidement sans attendre l'email.
             </p>
             <UButton
-              color="violet"
+              color="primary"
               variant="outline"
               icon="i-lucide-key"
               @click="showPasswordSection = true"
@@ -335,7 +335,7 @@ async function logout() {
             />
             <div class="flex gap-2">
               <UButton
-                color="violet"
+                color="primary"
                 variant="solid"
                 :loading="isSavingPassword"
                 :disabled="!newPassword || !confirmPassword"
