@@ -69,7 +69,7 @@ onMounted(async () => {
         <h2 class="text-2xl font-bold text-white">Erreur</h2>
         <p class="text-zinc-400 text-center">{{ errorMessage }}</p>
         <UButton
-          color="violet"
+          color="primary"
           variant="solid"
           @click="navigateTo('/login')"
         >

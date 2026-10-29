@@ -150,5 +150,6 @@ yarn preview      # Preview build prod
 
 - **Toujours** avoir `app/assets/css/main.css` avec `@import "tailwindcss"` et `@import "@nuxt/ui"`
 - **Toujours** avoir `<NuxtLayout>` dans `app/app.vue` sinon les layouts ne s'appliquent pas
-- `app.config.ts` utilise `ui: { primary: 'violet', gray: 'zinc' }` (ancien format v2/v3 — à migrer si besoin)
+- `app/app.config.ts` (dans `app/`, sinon ignoré en Nuxt 4) : `ui: { colors: { primary: 'violet', neutral: 'zinc' } }`
+- Props `color` : uniquement les alias sémantiques (`primary`, `neutral`, `success`, `warning`, `error`, `info`), jamais `violet`/`red`/`zinc`…
 - `colorMode: { preference: 'dark', fallback: 'dark' }` dans `nuxt.config.ts`

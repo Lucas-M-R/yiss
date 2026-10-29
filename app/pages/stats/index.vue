@@ -333,7 +333,7 @@ const hasChartData = computed(() => (stats.value ?? []).length > 0)
         placeholder="Tous les exercices"
         value-key="value"
         label-key="label"
-        color="zinc"
+        color="neutral"
         class="w-full"
       />
 

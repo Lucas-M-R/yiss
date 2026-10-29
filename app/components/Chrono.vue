@@ -97,7 +97,7 @@ watch([isOpen, isRunning], () => {
         <UButton
           icon="i-lucide-x"
           variant="ghost"
-          color="gray"
+          color="neutral"
           size="sm"
           @click="close"
         />
@@ -115,7 +115,7 @@ watch([isOpen, isRunning], () => {
           icon="i-lucide-rotate-ccw"
           size="xl"
           variant="ghost"
-          color="gray"
+          color="neutral"
           @click="reset"
         />
       </div>

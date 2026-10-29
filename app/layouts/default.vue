@@ -37,7 +37,7 @@ function isActive(to: string) {
         <UButton
           icon="i-lucide-refresh-cw"
           variant="ghost"
-          color="gray"
+          color="neutral"
           size="sm"
           :class="isRefreshing ? 'animate-spin' : ''"
           :disabled="isRefreshing"
@@ -46,7 +46,7 @@ function isActive(to: string) {
         <UButton
           icon="i-lucide-timer"
           variant="ghost"
-          color="gray"
+          color="neutral"
           size="sm"
           @click="openChrono"
         />

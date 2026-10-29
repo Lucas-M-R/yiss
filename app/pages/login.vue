@@ -128,7 +128,7 @@ async function handleSubmit() {
           type="submit"
           size="lg"
           class="w-full justify-center"
-          color="violet"
+          color="primary"
           variant="solid"
           :loading="loading"
         >
@@ -194,7 +194,7 @@ async function handleSubmit() {
           type="submit"
           size="lg"
           class="w-full justify-center"
-          color="violet"
+          color="primary"
           variant="solid"
           :loading="loading"
         >

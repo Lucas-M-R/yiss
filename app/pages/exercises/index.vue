@@ -77,9 +77,9 @@ async function submitExercise() {
     }
     modalOpen.value = false
     await refresh()
-    toast.add({ title: id ? 'Exercice modifié' : 'Exercice créé', color: 'green' })
+    toast.add({ title: id ? 'Exercice modifié' : 'Exercice créé', color: 'success' })
   } catch (e: any) {
-    toast.add({ title: 'Erreur', description: e?.data?.message ?? e.message, color: 'red' })
+    toast.add({ title: 'Erreur', description: e?.data?.message ?? e.message, color: 'error' })
   } finally {
     saving.value = false
   }
@@ -90,9 +90,9 @@ async function deleteExercise(id: string) {
   try {
     await $fetch(`/api/exercises/${id}`, { method: 'DELETE' })
     await refresh()
-    toast.add({ title: 'Exercice supprimé', color: 'green' })
+    toast.add({ title: 'Exercice supprimé', color: 'success' })
   } catch (e: any) {
-    toast.add({ title: 'Erreur', description: e?.data?.message ?? e.message, color: 'red' })
+    toast.add({ title: 'Erreur', description: e?.data?.message ?? e.message, color: 'error' })
   }
 }
 </script>
@@ -105,7 +105,7 @@ async function deleteExercise(id: string) {
         <h2 class="text-2xl font-bold text-white">Exercices</h2>
         <p class="text-zinc-400 text-sm mt-1">Bibliothèque d'exercices.</p>
       </div>
-      <UButton size="sm" color="violet" variant="solid" icon="i-lucide-plus" @click="openModal">
+      <UButton size="sm" color="primary" variant="solid" icon="i-lucide-plus" @click="openModal">
         Nouvel exercice
       </UButton>
     </div>
@@ -135,7 +135,7 @@ async function deleteExercise(id: string) {
                 <span class="font-medium text-white truncate">{{ ex.name }}</span>
                 <UBadge
                   :label="ex.created_by ? 'Personnel' : 'Global'"
-                  :color="ex.created_by ? 'violet' : 'zinc'"
+                  :color="ex.created_by ? 'primary' : 'neutral'"
                   variant="subtle"
                   size="xs"
                 />
@@ -144,7 +144,7 @@ async function deleteExercise(id: string) {
                 <UButton
                   icon="i-lucide-pencil"
                   size="xs"
-                  color="zinc"
+                  color="neutral"
                   variant="ghost"
                   aria-label="Modifier"
                   @click="openEditModal(ex)"
@@ -152,7 +152,7 @@ async function deleteExercise(id: string) {
                 <UButton
                   icon="i-lucide-trash-2"
                   size="xs"
-                  color="red"
+                  color="error"
                   variant="ghost"
                   aria-label="Supprimer"
                   @click="deleteExercise(ex.id)"
@@ -206,8 +206,8 @@ async function deleteExercise(id: string) {
       </template>
       <template #footer>
         <div class="flex justify-end gap-2">
-          <UButton variant="ghost" color="zinc" :disabled="saving" @click="modalOpen = false">Annuler</UButton>
-          <UButton color="violet" :loading="saving" :disabled="!form.name.trim()" @click="submitExercise">
+          <UButton variant="ghost" color="neutral" :disabled="saving" @click="modalOpen = false">Annuler</UButton>
+          <UButton color="primary" :loading="saving" :disabled="!form.name.trim()" @click="submitExercise">
             {{ editingId ? 'Enregistrer' : 'Créer' }}
           </UButton>
         </div>

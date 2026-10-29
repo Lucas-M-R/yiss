@@ -317,7 +317,7 @@ const exampleJson = `[
         <div class="flex justify-end">
           <UButton
             icon="i-lucide-check-circle"
-            color="violet"
+            color="primary"
             :disabled="!rawJson.trim()"
             @click="validate"
           >
@@ -402,7 +402,7 @@ const exampleJson = `[
           <div class="flex justify-end">
             <UButton
               icon="i-lucide-upload-cloud"
-              color="violet"
+              color="primary"
               :loading="isImporting"
               :disabled="isImporting"
               @click="runImport"
@@ -470,7 +470,7 @@ const exampleJson = `[
             <UButton
               to="/stats"
               variant="ghost"
-              color="violet"
+              color="primary"
               trailing-icon="i-lucide-arrow-right"
             >
               Voir les statistiques

@@ -268,7 +268,7 @@ async function refreshSession() {
   await flushPendingSaves()
   // A failed save is waiting for its retry: refetching now would overwrite the unsaved value
   if (saveTimers.size > 0) {
-    toast.add({ title: 'Connexion instable', description: 'Des séries ne sont pas encore enregistrées, réessaie dans un instant.', color: 'orange' })
+    toast.add({ title: 'Connexion instable', description: 'Des séries ne sont pas encore enregistrées, réessaie dans un instant.', color: 'warning' })
     return
   }
   await fetchSession()
@@ -328,7 +328,7 @@ async function startSession(copyFromSessionId?: string) {
     // Refresh to get full session data including me/partner
     await fetchSession()
   } catch (e: any) {
-    toast.add({ title: 'Impossible de créer la séance', description: e?.data?.message ?? e?.message, color: 'red' })
+    toast.add({ title: 'Impossible de créer la séance', description: e?.data?.message ?? e?.message, color: 'error' })
   } finally {
     loadingRef.value = false
   }
@@ -405,6 +405,31 @@ async function removeExercise(sessionExerciseId: string) {
     // Revert on error
     await fetchSession()
   }
+}
+
+// Reorder requests are chained so a fast double tap can't land out of order on the server
+let reorderQueue: Promise<void> = Promise.resolve()
+
+function moveExercise(sessionExerciseId: string, direction: -1 | 1) {
+  const list = [...sortedExercises.value]
+  const from = list.findIndex(e => e.id === sessionExerciseId)
+  const to = from + direction
+  if (from === -1 || to < 0 || to >= list.length) return
+
+  // Optimistic update: renumber every exercise so duplicate sort_order values can't block the swap
+  const [moved] = list.splice(from, 1)
+  list.splice(to, 0, moved!)
+  list.forEach((e, i) => { e.sort_order = i })
+
+  const ids = list.map(e => e.id)
+  reorderQueue = reorderQueue.then(async () => {
+    try {
+      await $fetch(`/api/sessions/${date.value}/reorder`, { method: 'PUT', body: { ids } })
+    } catch (e: any) {
+      toast.add({ title: 'Ordre non enregistré', description: e?.data?.message ?? e?.message, color: 'error' })
+      await refreshSession()
+    }
+  })
 }
 
 async function saveSetsCount(sessionExerciseId: string, value: number) {
@@ -633,7 +658,7 @@ async function doSaveSet(key: string, sessionExerciseId: string, setNumber: numb
       failedSaves.value = new Set([...failedSaves.value, key])
     } else {
       if (failedSaves.value.delete(key)) failedSaves.value = new Set(failedSaves.value)
-      toast.add({ title: 'Série non enregistrée', description: e?.data?.message ?? 'Recharge la page puis saisis à nouveau la valeur.', color: 'red' })
+      toast.add({ title: 'Série non enregistrée', description: e?.data?.message ?? 'Recharge la page puis saisis à nouveau la valeur.', color: 'error' })
     }
     if (retryable && !unmounted && !dirtyWhileSaving.has(key) && !saveTimers.has(key)) {
       scheduleSave(sessionExerciseId, setNumber, userId, SET_RETRY_DELAY_MS)
@@ -790,7 +815,7 @@ function onCardioInput(
             <UButton
               block
               size="md"
-              color="violet"
+              color="primary"
               variant="soft"
               icon="i-lucide-repeat"
               :loading="copyingPrevious"
@@ -824,7 +849,7 @@ function onCardioInput(
 
           <UButton
             size="md"
-            color="violet"
+            color="primary"
             variant="solid"
             icon="i-lucide-play"
             :loading="creating"
@@ -877,12 +902,31 @@ function onCardioInput(
           </thead>
 
           <tbody>
-            <template v-for="ex in sortedExercises" :key="ex.id">
+            <template v-for="(ex, exIndex) in sortedExercises" :key="ex.id">
               <!-- Exercise header row -->
               <tr class="border-b border-zinc-800/60 bg-zinc-800/30">
                 <!-- Exercise name (sticky) -->
                 <td class="sticky left-0 z-10 bg-zinc-800/60 px-3 py-2">
                   <div class="flex items-center gap-1.5">
+                    <!-- Reorder -->
+                    <div v-if="sortedExercises.length > 1" class="flex flex-col flex-shrink-0 -my-1">
+                      <button
+                        class="text-zinc-600 hover:text-violet-400 disabled:opacity-30 disabled:hover:text-zinc-600 transition-colors leading-none"
+                        title="Monter l'exercice"
+                        :disabled="exIndex === 0"
+                        @click="moveExercise(ex.id, -1)"
+                      >
+                        <UIcon name="i-lucide-chevron-up" class="text-sm" />
+                      </button>
+                      <button
+                        class="text-zinc-600 hover:text-violet-400 disabled:opacity-30 disabled:hover:text-zinc-600 transition-colors leading-none"
+                        title="Descendre l'exercice"
+                        :disabled="exIndex === sortedExercises.length - 1"
+                        @click="moveExercise(ex.id, 1)"
+                      >
+                        <UIcon name="i-lucide-chevron-down" class="text-sm" />
+                      </button>
+                    </div>
                     <button
                       class="text-zinc-600 hover:text-red-400 transition-colors flex-shrink-0"
                       title="Supprimer l'exercice"
@@ -1082,7 +1126,7 @@ function onCardioInput(
         <UButton
           icon="i-lucide-plus"
           variant="outline"
-          color="violet"
+          color="primary"
           size="sm"
           @click="openAddModal"
         >
@@ -1091,7 +1135,7 @@ function onCardioInput(
         <UButton
           icon="i-lucide-message-square"
           variant="ghost"
-          :color="showSessionNotes || session?.notes ? 'violet' : 'neutral'"
+          :color="showSessionNotes || session?.notes ? 'primary' : 'neutral'"
           size="sm"
           @click="showSessionNotes = !showSessionNotes"
         >
@@ -1138,7 +1182,7 @@ function onCardioInput(
             <UButton
               v-else
               icon="i-lucide-plus"
-              color="violet"
+              color="primary"
               variant="outline"
               class="w-full"
               :loading="creatingExercise"
@@ -1166,7 +1210,7 @@ function onCardioInput(
         <div class="flex gap-2 justify-end w-full">
           <UButton variant="ghost" color="neutral" @click="closeAddModal">Annuler</UButton>
           <UButton
-            color="violet"
+            color="primary"
             :disabled="!selectedExerciseId"
             :loading="addingExercise"
             @click="addExercise"
