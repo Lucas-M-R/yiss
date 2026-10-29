@@ -407,6 +407,31 @@ async function removeExercise(sessionExerciseId: string) {
   }
 }
 
+// Reorder requests are chained so a fast double tap can't land out of order on the server
+let reorderQueue: Promise<void> = Promise.resolve()
+
+function moveExercise(sessionExerciseId: string, direction: -1 | 1) {
+  const list = [...sortedExercises.value]
+  const from = list.findIndex(e => e.id === sessionExerciseId)
+  const to = from + direction
+  if (from === -1 || to < 0 || to >= list.length) return
+
+  // Optimistic update: renumber every exercise so duplicate sort_order values can't block the swap
+  const [moved] = list.splice(from, 1)
+  list.splice(to, 0, moved!)
+  list.forEach((e, i) => { e.sort_order = i })
+
+  const ids = list.map(e => e.id)
+  reorderQueue = reorderQueue.then(async () => {
+    try {
+      await $fetch(`/api/sessions/${date.value}/reorder`, { method: 'PUT', body: { ids } })
+    } catch (e: any) {
+      toast.add({ title: 'Ordre non enregistré', description: e?.data?.message ?? e?.message, color: 'error' })
+      await refreshSession()
+    }
+  })
+}
+
 async function saveSetsCount(sessionExerciseId: string, value: number) {
   await $fetch(`/api/session-exercises/${sessionExerciseId}`, {
     method: 'PATCH',
@@ -877,12 +902,31 @@ function onCardioInput(
           </thead>
 
           <tbody>
-            <template v-for="ex in sortedExercises" :key="ex.id">
+            <template v-for="(ex, exIndex) in sortedExercises" :key="ex.id">
               <!-- Exercise header row -->
               <tr class="border-b border-zinc-800/60 bg-zinc-800/30">
                 <!-- Exercise name (sticky) -->
                 <td class="sticky left-0 z-10 bg-zinc-800/60 px-3 py-2">
                   <div class="flex items-center gap-1.5">
+                    <!-- Reorder -->
+                    <div v-if="sortedExercises.length > 1" class="flex flex-col flex-shrink-0 -my-1">
+                      <button
+                        class="text-zinc-600 hover:text-violet-400 disabled:opacity-30 disabled:hover:text-zinc-600 transition-colors leading-none"
+                        title="Monter l'exercice"
+                        :disabled="exIndex === 0"
+                        @click="moveExercise(ex.id, -1)"
+                      >
+                        <UIcon name="i-lucide-chevron-up" class="text-sm" />
+                      </button>
+                      <button
+                        class="text-zinc-600 hover:text-violet-400 disabled:opacity-30 disabled:hover:text-zinc-600 transition-colors leading-none"
+                        title="Descendre l'exercice"
+                        :disabled="exIndex === sortedExercises.length - 1"
+                        @click="moveExercise(ex.id, 1)"
+                      >
+                        <UIcon name="i-lucide-chevron-down" class="text-sm" />
+                      </button>
+                    </div>
                     <button
                       class="text-zinc-600 hover:text-red-400 transition-colors flex-shrink-0"
                       title="Supprimer l'exercice"
