@@ -319,7 +319,7 @@ const exampleJson = `[
             icon="i-lucide-check-circle"
             color="primary"
             :disabled="!rawJson.trim()"
-            @click="validate"
+            @click="validate()"
           >
             Valider
           </UButton>
