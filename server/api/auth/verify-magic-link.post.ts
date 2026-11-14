@@ -1,4 +1,4 @@
-import { serverSupabaseClient } from '#supabase/server'
+import { useSupabaseClient } from '../../utils/supabase'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
 
   const { email } = data
 
-  const supabase = await serverSupabaseClient(event)
+  const supabase = useSupabaseClient()
   const { data: persisted, error: upsertError } = await supabase
     .from('users')
     .upsert(

@@ -51,6 +51,25 @@ async function sendMagicLink() {
   }
 }
 
+// Demo login with mock data, only offered on Vercel preview deployments
+const { data: demo } = await useFetch<{ enabled: boolean }>('/api/auth/demo')
+const demoLoading = ref<'login' | 'reset' | null>(null)
+const demoError = ref('')
+
+async function loginAsDemo(reset = false) {
+  demoError.value = ''
+  demoLoading.value = reset ? 'reset' : 'login'
+  try {
+    await $fetch('/api/auth/demo', { method: 'POST', body: { reset } })
+    await fetchSession()
+    await navigateTo('/')
+  } catch (err: any) {
+    demoError.value = err.data?.message || 'Connexion démo impossible'
+  } finally {
+    demoLoading.value = null
+  }
+}
+
 async function handleSubmit() {
   if (mode.value === 'magic') {
     await sendMagicLink()
@@ -74,6 +93,35 @@ async function handleSubmit() {
       </div>
 
       <USeparator class="w-full" />
+
+      <!-- Demo login (preview deployments only) -->
+      <div v-if="demo?.enabled" class="w-full space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+        <p class="text-xs text-amber-300 text-center">Déploiement de preview : connexion de test avec des données fictives</p>
+        <UButton
+          size="lg"
+          class="w-full justify-center"
+          color="warning"
+          variant="soft"
+          icon="i-lucide-flask-conical"
+          :loading="demoLoading === 'login'"
+          :disabled="demoLoading !== null"
+          @click="loginAsDemo()"
+        >
+          Connexion démo
+        </UButton>
+        <UButton
+          size="xs"
+          class="w-full justify-center"
+          color="neutral"
+          variant="ghost"
+          :loading="demoLoading === 'reset'"
+          :disabled="demoLoading !== null"
+          @click="loginAsDemo(true)"
+        >
+          Réinitialiser les données démo
+        </UButton>
+        <p v-if="demoError" class="text-sm text-red-400 text-center">{{ demoError }}</p>
+      </div>
 
       <!-- Google OAuth -->
       <UButton
