@@ -1,3 +1,5 @@
+import { DEMO_IDS } from '../utils/demo'
+
 export default defineEventHandler(async (event) => {
   const path = getRequestURL(event).pathname
 
@@ -11,5 +13,10 @@ export default defineEventHandler(async (event) => {
       statusCode: 401,
       statusMessage: 'Non autorisé'
     })
+  }
+
+  // Anyone with a preview URL can log in as the demo duo: keep it away from real users
+  if (DEMO_IDS.includes(session.user.id) && (path.startsWith('/api/invitations') || path.startsWith('/api/users/search'))) {
+    throw createError({ statusCode: 403, message: 'Indisponible avec le compte démo' })
   }
 })

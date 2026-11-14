@@ -16,6 +16,8 @@ export default defineNuxtConfig({
     authPassword: '',
     supabaseServiceKey: '',
     resendApiKey: '',
+    // Demo login with mock data, forced on Vercel previews (see server/utils/demo.ts)
+    demoMode: false,
     emailFrom: 'Spor <onboarding@resend.dev>',
     oauth: {
       google: {

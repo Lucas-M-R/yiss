@@ -75,6 +75,7 @@ NUXT_SUPABASE_SERVICE_KEY=# Clé service_role Supabase (pas la clé anon !)
 NUXT_RESEND_API_KEY=      # Clé API Resend pour l'envoi d'emails (magic link)
 NUXT_EMAIL_FROM=          # Optionnel : "Spor <noreply@votredomaine.com>"
 NUXT_PUBLIC_APP_URL=      # URL de l'app (ex: http://localhost:3000 en dev)
+NUXT_DEMO_MODE=           # Optionnel, local : "true" active la connexion démo (toujours active sur les previews Vercel)
 # Google OAuth (optionnel, problème Firefox connu)
 NUXT_OAUTH_GOOGLE_CLIENT_ID=
 NUXT_OAUTH_GOOGLE_CLIENT_SECRET=
@@ -88,6 +89,7 @@ NUXT_OAUTH_GOOGLE_CLIENT_SECRET=
   - **Magic link par email** (Resend) — Le lien pointe vers `/auth/verify?token=...` (callback dédiée, `auth: false`)
   - **Email + mot de passe** (bcrypt) — L'utilisateur peut définir un mot de passe dans les paramètres
   - Google OAuth (problème sur Firefox, désactivé)
+  - **Connexion démo** (previews Vercel uniquement, `VERCEL_ENV=preview`) — Bouton sur `/login` qui connecte le duo fictif `demo-user` / `demo-partner` et crée ses données (programme, 6 semaines d'historique, séance du jour) dans la base configurée. Jamais active en production. Voir `server/utils/demo.ts`
 - **Storage des magic links** : Filesystem storage (`.data/magic-links/`) avec TTL de 15 minutes
 - **Gestion des mots de passe** : Hachage bcrypt, API `/api/auth/set-password` pour définir/changer le mot de passe
 - Styles Nuxt UI + Tailwind v4 correctement chargés
