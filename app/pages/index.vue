@@ -48,7 +48,7 @@ function getWeekDays(): { iso: string; label: string; dayIndex: number }[] {
     const d = new Date(today)
     d.setDate(today.getDate() + mondayOffset + i)
     const iso = d.toISOString().slice(0, 10)
-    days.push({ iso, label: dayNamesShort[(d.getDay())], dayIndex: i })
+    days.push({ iso, label: dayNamesShort[d.getDay()]!, dayIndex: i })
   }
   return days
 }

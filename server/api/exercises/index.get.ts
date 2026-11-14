@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
   const { data: me } = await supabase
     .from('users').select('partner_id').eq('id', session.user.id).single()
 
-  const userIds = [session.user.id, me?.partner_id].filter(Boolean)
+  const userIds = [session.user.id, me?.partner_id].filter((id): id is string => !!id)
 
   const { data, error } = await supabase
     .from('exercises')

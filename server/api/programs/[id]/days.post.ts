@@ -1,11 +1,12 @@
 import { useSupabaseClient } from '../../../utils/supabase'
 import { assertProgramAccess } from '../../../utils/access'
+import { requireRouterParam } from '../../../utils/params'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
   if (!session?.user) throw createError({ statusCode: 401 })
 
-  const programId = getRouterParam(event, 'id')
+  const programId = requireRouterParam(event, 'id')
   const body = await readBody(event)
   const supabase = useSupabaseClient()
   await assertProgramAccess(supabase, programId, session.user.id, { write: true })

@@ -1,4 +1,5 @@
 import { useSupabaseClient } from '../../../utils/supabase'
+import { requireRouterParam } from '../../../utils/params'
 
 const WEEKS_BACK = 8
 
@@ -8,7 +9,7 @@ export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
   if (!session?.user) throw createError({ statusCode: 401 })
 
-  const date = getRouterParam(event, 'date') // YYYY-MM-DD
+  const date = requireRouterParam(event, 'date') // YYYY-MM-DD
   const parsed = new Date(`${date}T00:00:00Z`)
   // The round trip rejects impossible dates like 2026-13-01 or 2026-02-31
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date) || isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
@@ -24,7 +25,7 @@ export default defineEventHandler(async (event) => {
   const supabase = useSupabaseClient()
   const { data: me } = await supabase
     .from('users').select('partner_id').eq('id', session.user.id).single()
-  const userIds = [session.user.id, me?.partner_id].filter(Boolean)
+  const userIds = [session.user.id, me?.partner_id].filter((id): id is string => !!id)
 
   const { data, error } = await supabase
     .from('sessions')

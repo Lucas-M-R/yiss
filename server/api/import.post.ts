@@ -16,6 +16,7 @@ export default defineEventHandler(async (event) => {
     .single()
 
   if (!me) throw createError({ statusCode: 401, message: 'Utilisateur introuvable' })
+  const userId = me.id
 
   let imported = 0
   let skipped = 0
@@ -47,7 +48,7 @@ export default defineEventHandler(async (event) => {
 
     const { data: created } = await supabase
       .from('exercises')
-      .insert({ name: name.trim(), category: isCardio ? 'cardio' : 'strength', created_by: session.user.id })
+      .insert({ name: name.trim(), category: isCardio ? 'cardio' : 'strength', created_by: userId })
       .select('id')
       .single()
 

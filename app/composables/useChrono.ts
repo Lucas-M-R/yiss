@@ -4,7 +4,7 @@ export const useChrono = () => {
   const isRunning = useState('chrono-running', () => false)
   const wakeLock = useState<WakeLockSentinel | null>('chrono-wake-lock', () => null)
 
-  let intervalId: NodeJS.Timeout | null = null
+  let intervalId: ReturnType<typeof setInterval> | null = null
 
   const start = async () => {
     if (isRunning.value) return

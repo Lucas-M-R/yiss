@@ -1,10 +1,11 @@
 import { useSupabaseClient } from '../../utils/supabase'
+import { requireRouterParam } from '../../utils/params'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
   if (!session?.user) throw createError({ statusCode: 401 })
 
-  const date = getRouterParam(event, 'date')
+  const date = requireRouterParam(event, 'date')
   const body = await readBody(event)
   const supabase = useSupabaseClient()
 
@@ -18,7 +19,7 @@ export default defineEventHandler(async (event) => {
       .from('sessions')
       .select('id, program_day_id')
       .eq('id', body.copy_from_session_id)
-      .in('created_by', [session.user.id, me?.partner_id].filter(Boolean))
+      .in('created_by', [session.user.id, me?.partner_id].filter((id): id is string => !!id))
       .maybeSingle()
     if (!data) throw createError({ statusCode: 404, message: 'Séance à reprendre introuvable' })
     source = data
@@ -34,7 +35,7 @@ export default defineEventHandler(async (event) => {
     })
     .select().single()
 
-  if (error) throw createError({ statusCode: 500, message: error.message })
+  if (error || !newSession) throw createError({ statusCode: 500, message: error?.message ?? 'Séance non créée' })
 
   // Add participants: self + partner if exists
   const participants: { session_id: string; user_id: string }[] = [
@@ -45,12 +46,13 @@ export default defineEventHandler(async (event) => {
   }
   await supabase.from('session_participants').insert(participants)
 
+  const newSessionId = newSession.id
   // Undo the session if its exercises could not be copied, so that a retry is not
   // blocked by the unique (session_date, created_by) constraint
   async function failAndRollback(message: string): Promise<never> {
-    const { error: rollbackError } = await supabase.from('sessions').delete().eq('id', newSession.id)
+    const { error: rollbackError } = await supabase.from('sessions').delete().eq('id', newSessionId)
     // Nothing more can be done here: the empty session stays and has to be deleted by hand
-    if (rollbackError) console.error(`Rollback failed for session ${newSession.id}:`, rollbackError.message)
+    if (rollbackError) console.error(`Rollback failed for session ${newSessionId}:`, rollbackError.message)
     throw createError({ statusCode: 500, message })
   }
 

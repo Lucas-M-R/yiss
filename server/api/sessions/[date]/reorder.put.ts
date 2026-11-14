@@ -1,11 +1,12 @@
 import { useSupabaseClient } from '../../../utils/supabase'
+import { requireRouterParam } from '../../../utils/params'
 
 // Rewrites the order of the session's exercises: body.ids is the full list of session_exercise ids, in display order
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
   if (!session?.user) throw createError({ statusCode: 401 })
 
-  const date = getRouterParam(event, 'date')
+  const date = requireRouterParam(event, 'date')
   const body = await readBody(event)
   const ids: unknown = body?.ids
   if (!Array.isArray(ids) || !ids.every(id => typeof id === 'string') || new Set(ids).size !== ids.length)
@@ -21,9 +22,10 @@ export default defineEventHandler(async (event) => {
     .from('sessions')
     .select('id, created_by, exercises:session_exercises(id)')
     .eq('session_date', date)
-    .in('created_by', [session.user.id, me?.partner_id].filter(Boolean))
+    .in('created_by', [session.user.id, me?.partner_id].filter((id): id is string => !!id))
 
-  const sess = sessions?.find(s => s.created_by === session.user.id) ?? sessions?.[0]
+  const userId = session.user.id
+  const sess = sessions?.find(s => s.created_by === userId) ?? sessions?.[0]
   if (!sess) throw createError({ statusCode: 404, message: 'Séance introuvable' })
 
   // The list must be exactly the session's exercises, so no id from another session can be touched

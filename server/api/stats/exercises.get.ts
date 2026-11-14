@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
   const { data: me } = await supabase
     .from('users').select('partner_id').eq('id', session.user.id).single()
 
-  const allowedUserIds = [session.user.id, me?.partner_id].filter(Boolean)
+  const allowedUserIds = [session.user.id, me?.partner_id].filter((id): id is string => !!id)
 
   const { data } = await supabase
     .from('exercise_stats')
