@@ -296,6 +296,8 @@ onBeforeUnmount(() => {
   flushPendingSaves()
   setsCountTimers.forEach(t => clearTimeout(t))
   setsCountTimers.clear()
+  cancelLongPress()
+  stopDragListeners()
 })
 
 // ---------------------------------------------------------------------------
@@ -392,6 +394,19 @@ async function addExercise() {
   }
 }
 
+// Exercise waiting for the delete confirmation
+const exerciseToDelete = ref<SessionExercise | null>(null)
+
+const exerciseToDeleteHasSets = computed(() =>
+  exerciseToDelete.value?.sets.some(s => s.reps != null || s.weight_kg != null || s.duration_sec != null) ?? false
+)
+
+function confirmRemoveExercise() {
+  const ex = exerciseToDelete.value
+  exerciseToDelete.value = null
+  if (ex) removeExercise(ex.id)
+}
+
 async function removeExercise(sessionExerciseId: string) {
   // Optimistic removal
   if (sessionData.value?.session) {
@@ -410,18 +425,16 @@ async function removeExercise(sessionExerciseId: string) {
 // Reorder requests are chained so a fast double tap can't land out of order on the server
 let reorderQueue: Promise<void> = Promise.resolve()
 
-function moveExercise(sessionExerciseId: string, direction: -1 | 1) {
+// Optimistic update: renumber every exercise so duplicate sort_order values can't block the move
+function reorderLocally(from: number, to: number) {
   const list = [...sortedExercises.value]
-  const from = list.findIndex(e => e.id === sessionExerciseId)
-  const to = from + direction
-  if (from === -1 || to < 0 || to >= list.length) return
-
-  // Optimistic update: renumber every exercise so duplicate sort_order values can't block the swap
   const [moved] = list.splice(from, 1)
   list.splice(to, 0, moved!)
   list.forEach((e, i) => { e.sort_order = i })
+}
 
-  const ids = list.map(e => e.id)
+function persistOrder() {
+  const ids = sortedExercises.value.map(e => e.id)
   reorderQueue = reorderQueue.then(async () => {
     try {
       await $fetch(`/api/sessions/${date.value}/reorder`, { method: 'PUT', body: { ids } })
@@ -430,6 +443,132 @@ function moveExercise(sessionExerciseId: string, direction: -1 | 1) {
       await refreshSession()
     }
   })
+}
+
+function moveExercise(sessionExerciseId: string, direction: -1 | 1) {
+  const from = sortedExercises.value.findIndex(e => e.id === sessionExerciseId)
+  const to = from + direction
+  if (from === -1 || to < 0 || to >= sortedExercises.value.length) return
+  reorderLocally(from, to)
+  persistOrder()
+}
+
+// ---------------------------------------------------------------------------
+// Long-press drag to reorder (touch screens)
+// ---------------------------------------------------------------------------
+
+const LONG_PRESS_MS = 400
+const LONG_PRESS_TOLERANCE_PX = 10
+// Distance from the viewport edges (sticky header / bottom nav) where the page scrolls on its own
+const AUTO_SCROLL_TOP_PX = 110
+const AUTO_SCROLL_BOTTOM_PX = 130
+
+const draggingId = ref<string | null>(null)
+// One <tbody> per exercise, to measure where each one sits on screen
+const exerciseGroups = new Map<string, HTMLElement>()
+let longPressTimer: ReturnType<typeof setTimeout> | null = null
+let pressStart = { x: 0, y: 0 }
+let dragY = 0
+let dragStartOrder = ''
+let autoScrollFrame: number | null = null
+
+function setExerciseGroupRef(id: string, el: unknown) {
+  if (el instanceof HTMLElement) exerciseGroups.set(id, el)
+  else exerciseGroups.delete(id)
+}
+
+function cancelLongPress() {
+  if (longPressTimer) clearTimeout(longPressTimer)
+  longPressTimer = null
+}
+
+function onExerciseTouchStart(sessionExerciseId: string, e: TouchEvent) {
+  cancelLongPress()
+  if (e.touches.length !== 1 || sortedExercises.value.length < 2) return
+  // The delete / comment buttons keep their own tap
+  if ((e.target as HTMLElement).closest('button, input, textarea')) return
+  const touch = e.touches[0]!
+  pressStart = { x: touch.clientX, y: touch.clientY }
+  longPressTimer = setTimeout(() => startDrag(sessionExerciseId), LONG_PRESS_MS)
+}
+
+// Moving before the long press fires means the user is scrolling
+function onExerciseTouchMove(e: TouchEvent) {
+  if (!longPressTimer) return
+  const touch = e.touches[0]!
+  if (Math.hypot(touch.clientX - pressStart.x, touch.clientY - pressStart.y) > LONG_PRESS_TOLERANCE_PX) cancelLongPress()
+}
+
+function startDrag(sessionExerciseId: string) {
+  longPressTimer = null
+  ;(document.activeElement as HTMLElement | null)?.blur?.()
+  const topBefore = exerciseGroups.get(sessionExerciseId)?.getBoundingClientRect().top ?? 0
+  draggingId.value = sessionExerciseId
+  dragY = pressStart.y
+  dragStartOrder = sortedExercises.value.map(e => e.id).join()
+  navigator.vibrate?.(30)
+
+  document.addEventListener('touchmove', onDragMove, { passive: false })
+  document.addEventListener('touchend', endDrag)
+  document.addEventListener('touchcancel', endDrag)
+  autoScrollFrame = requestAnimationFrame(autoScrollStep)
+
+  // Set rows are hidden while dragging: scroll so the dragged exercise stays under the finger
+  nextTick(() => {
+    const topAfter = exerciseGroups.get(sessionExerciseId)?.getBoundingClientRect().top ?? topBefore
+    window.scrollBy(0, topAfter - topBefore)
+  })
+}
+
+function onDragMove(e: TouchEvent) {
+  // Blocks the page scroll while an exercise is held
+  e.preventDefault()
+  dragY = e.touches[0]!.clientY
+  updateDragPosition()
+}
+
+// Moves the dragged exercise once the finger passes the middle of a neighbour,
+// so it doesn't swap back and forth on the boundary
+function updateDragPosition() {
+  const list = sortedExercises.value
+  const from = list.findIndex(e => e.id === draggingId.value)
+  if (from === -1) return
+  const middle = (i: number) => {
+    const rect = exerciseGroups.get(list[i]!.id)?.getBoundingClientRect()
+    return rect ? rect.top + rect.height / 2 : NaN
+  }
+  let to = from
+  while (to + 1 < list.length && dragY > middle(to + 1)) to++
+  if (to === from) while (to > 0 && dragY < middle(to - 1)) to--
+  if (to !== from) reorderLocally(from, to)
+}
+
+function autoScrollStep() {
+  if (!draggingId.value) return
+  const bottomEdge = window.innerHeight - AUTO_SCROLL_BOTTOM_PX
+  const speed = dragY < AUTO_SCROLL_TOP_PX
+    ? -(AUTO_SCROLL_TOP_PX - dragY) / 6
+    : dragY > bottomEdge ? (dragY - bottomEdge) / 6 : 0
+  if (speed) {
+    window.scrollBy(0, speed)
+    updateDragPosition()
+  }
+  autoScrollFrame = requestAnimationFrame(autoScrollStep)
+}
+
+function stopDragListeners() {
+  document.removeEventListener('touchmove', onDragMove)
+  document.removeEventListener('touchend', endDrag)
+  document.removeEventListener('touchcancel', endDrag)
+  if (autoScrollFrame !== null) cancelAnimationFrame(autoScrollFrame)
+  autoScrollFrame = null
+}
+
+function endDrag() {
+  stopDragListeners()
+  if (!draggingId.value) return
+  draggingId.value = null
+  if (sortedExercises.value.map(e => e.id).join() !== dragStartOrder) persistOrder()
 }
 
 async function saveSetsCount(sessionExerciseId: string, value: number) {
@@ -901,15 +1040,37 @@ function onCardioInput(
             </tr>
           </thead>
 
-          <tbody>
-            <template v-for="(ex, exIndex) in sortedExercises" :key="ex.id">
+          <!-- One tbody per exercise, measured by the long-press drag -->
+          <tbody
+            v-for="(ex, exIndex) in sortedExercises"
+            :key="ex.id"
+            :ref="el => setExerciseGroupRef(ex.id, el)"
+          >
               <!-- Exercise header row -->
-              <tr class="border-b border-zinc-800/60 bg-zinc-800/30">
-                <!-- Exercise name (sticky) -->
-                <td class="sticky left-0 z-10 bg-zinc-800/60 px-3 py-2">
+              <tr
+                class="border-b border-zinc-800/60 transition-colors"
+                :class="draggingId === ex.id ? 'bg-violet-500/20' : 'bg-zinc-800/30'"
+              >
+                <!-- Exercise name (sticky) — long press on touch screens to drag it -->
+                <td
+                  class="sticky left-0 z-10 px-3 py-2 select-none [-webkit-touch-callout:none]"
+                  :class="draggingId === ex.id ? 'bg-violet-900/80' : 'bg-zinc-800/60'"
+                  @touchstart="onExerciseTouchStart(ex.id, $event)"
+                  @touchmove.passive="onExerciseTouchMove"
+                  @touchend="cancelLongPress"
+                  @touchcancel="cancelLongPress"
+                  @contextmenu.prevent
+                >
                   <div class="flex items-center gap-1.5">
-                    <!-- Reorder -->
-                    <div v-if="sortedExercises.length > 1" class="flex flex-col flex-shrink-0 -my-1">
+                    <!-- Drag hint (touch) -->
+                    <UIcon
+                      v-if="sortedExercises.length > 1"
+                      name="i-lucide-grip-vertical"
+                      class="hidden pointer-coarse:block flex-shrink-0 text-sm"
+                      :class="draggingId === ex.id ? 'text-violet-300' : 'text-zinc-600'"
+                    />
+                    <!-- Reorder arrows (mouse) -->
+                    <div v-if="sortedExercises.length > 1" class="flex flex-col flex-shrink-0 -my-1 pointer-coarse:hidden">
                       <button
                         class="text-zinc-600 hover:text-violet-400 disabled:opacity-30 disabled:hover:text-zinc-600 transition-colors leading-none"
                         title="Monter l'exercice"
@@ -930,7 +1091,7 @@ function onCardioInput(
                     <button
                       class="text-zinc-600 hover:text-red-400 transition-colors flex-shrink-0"
                       title="Supprimer l'exercice"
-                      @click="removeExercise(ex.id)"
+                      @click="exerciseToDelete = ex"
                     >
                       <UIcon name="i-lucide-x" class="text-xs" />
                     </button>
@@ -970,7 +1131,7 @@ function onCardioInput(
               </tr>
 
               <!-- Exercise notes row -->
-              <tr v-if="openExerciseNotes.has(ex.id)" class="border-b border-zinc-800/60 bg-zinc-800/20">
+              <tr v-if="openExerciseNotes.has(ex.id) && !draggingId" class="border-b border-zinc-800/60 bg-zinc-800/20">
                 <td :colspan="partner ? 7 : 5" class="px-3 py-2">
                   <textarea
                     :value="ex.notes ?? ''"
@@ -983,7 +1144,8 @@ function onCardioInput(
                 </td>
               </tr>
 
-              <!-- One row per set number -->
+              <!-- One row per set number (hidden while dragging, so the exercises fit on screen) -->
+              <template v-if="!draggingId">
               <tr
                 v-for="n in ex.sets_count"
                 :key="`${ex.id}-set-${n}`"
@@ -1106,10 +1268,12 @@ function onCardioInput(
                   </td>
                 </template>
               </tr>
-            </template>
+              </template>
+          </tbody>
 
-            <!-- Empty state -->
-            <tr v-if="!sortedExercises.length">
+          <!-- Empty state -->
+          <tbody v-if="!sortedExercises.length">
+            <tr>
               <td :colspan="partner ? 7 : 5" class="px-4 py-10 text-center">
                 <div class="flex flex-col items-center gap-2 text-zinc-500">
                   <UIcon name="i-lucide-dumbbell" class="text-2xl text-zinc-600" />
@@ -1120,6 +1284,9 @@ function onCardioInput(
           </tbody>
         </table>
       </div>
+      <p v-if="sortedExercises.length > 1" class="hidden pointer-coarse:block -mt-2 text-center text-xs text-zinc-600">
+        Appui long sur un exercice pour le déplacer
+      </p>
 
       <!-- Add exercise + session notes buttons -->
       <div class="flex justify-center gap-2">
@@ -1157,6 +1324,28 @@ function onCardioInput(
     </div>
 
     <!-- Add exercise modal -->
+    <!-- Delete exercise confirmation -->
+    <UModal
+      :open="exerciseToDelete !== null"
+      title="Supprimer l'exercice ?"
+      @update:open="open => { if (!open) exerciseToDelete = null }"
+    >
+      <template #body>
+        <p class="text-sm text-zinc-300">
+          <span class="font-medium text-white">{{ exerciseToDelete?.exercise.name }}</span> sera retiré de la séance.
+        </p>
+        <p v-if="exerciseToDeleteHasSets" class="mt-2 text-sm text-amber-400">
+          Les séries déjà saisies{{ partner ? ` (les tiennes et celles de ${partner.display_name})` : '' }} seront perdues.
+        </p>
+      </template>
+      <template #footer>
+        <div class="flex gap-2 justify-end w-full">
+          <UButton variant="ghost" color="neutral" @click="exerciseToDelete = null">Annuler</UButton>
+          <UButton color="error" icon="i-lucide-trash-2" @click="confirmRemoveExercise">Supprimer</UButton>
+        </div>
+      </template>
+    </UModal>
+
     <UModal v-model:open="showAddModal" title="Ajouter un exercice">
       <template #body>
         <div class="space-y-4 p-1">
