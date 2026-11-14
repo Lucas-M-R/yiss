@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs'
-import { serverSupabaseClient } from '#supabase/server'
+import { useSupabaseClient } from '../../utils/supabase'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
   try {
     const passwordHash = await bcrypt.hash(password, 10)
 
-    const supabase = await serverSupabaseClient(event)
+    const supabase = useSupabaseClient()
     const { error } = await supabase
       .from('users')
       .update({ password_hash: passwordHash })
