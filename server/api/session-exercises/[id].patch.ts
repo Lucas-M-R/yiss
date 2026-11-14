@@ -1,15 +1,17 @@
 import { useSupabaseClient } from '../../utils/supabase'
 import { assertSessionExerciseAccess } from '../../utils/access'
+import { requireRouterParam } from '../../utils/params'
+import type { TablesUpdate } from '~~/shared/types/database.types'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
   if (!session?.user) throw createError({ statusCode: 401 })
 
-  const id = getRouterParam(event, 'id')
+  const id = requireRouterParam(event, 'id')
   const body = await readBody(event)
   const supabase = useSupabaseClient()
 
-  const updates: Record<string, unknown> = {}
+  const updates: TablesUpdate<'session_exercises'> = {}
   if (body.sets_count !== undefined) updates.sets_count = body.sets_count
   if (body.notes !== undefined) updates.notes = body.notes
 

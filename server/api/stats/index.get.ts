@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
     .eq('id', session.user.id)
     .single()
 
-  const allowedUserIds = [session.user.id, me?.partner_id].filter(Boolean)
+  const allowedUserIds = [session.user.id, me?.partner_id].filter((id): id is string => !!id)
 
   // Period filter
   const periodMap: Record<string, string> = {
@@ -34,15 +34,15 @@ export default defineEventHandler(async (event) => {
   if (query.user_id) q = q.eq('user_id', query.user_id as string)
   if (fromDate) q = q.gte('session_date', fromDate)
 
-  // If filtering by program, join through sessions
+  // If filtering by program: only the dates of our sessions made from one of its days
   if (query.program_id) {
-    // Get session dates that belong to this program
     const { data: programSessions } = await supabase
       .from('sessions')
-      .select('session_date')
-      .eq('program_day_id', query.program_id) // approximate — would need join to program_days
-    const dates = programSessions?.map(s => s.session_date) ?? []
-    if (dates.length > 0) q = q.in('session_date', dates)
+      .select('session_date, program_days!inner(program_id)')
+      .eq('program_days.program_id', String(query.program_id))
+      .in('created_by', allowedUserIds)
+    // An empty list filters everything out, as it should when the program was never done
+    q = q.in('session_date', programSessions?.map(s => s.session_date) ?? [])
   }
 
   const { data, error } = await q

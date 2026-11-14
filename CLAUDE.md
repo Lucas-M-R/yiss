@@ -59,7 +59,10 @@ server/
     import.post.ts     # Import de données
     invitations/       # Invitation partenaire
   utils/
-    supabase.ts        # Singleton client Supabase (service role)
+    supabase.ts        # Singleton client Supabase (service role), typé avec Database
+shared/types/
+  database.types.ts    # Types de la base (format `supabase gen types`) — à régénérer après tout changement de schéma
+  auth.d.ts            # Forme de session.user (nuxt-auth-utils)
 supabase/
   schema.sql           # Schéma complet à exécuter dans Supabase SQL Editor
 ```
@@ -146,6 +149,8 @@ Vue SQL : `exercise_stats` — charge max + volume par exercice + utilisateur + 
 yarn dev          # Démarrage serveur de dev
 yarn build        # Build production
 yarn preview      # Preview build prod
+yarn typecheck    # Vérification TypeScript (doit rester à 0 erreur)
+SUPABASE_PROJECT_ID=xxx npx supabase login && yarn db:types  # Régénère shared/types/database.types.ts
 ```
 
 ## Points d'attention NuxtUI v4

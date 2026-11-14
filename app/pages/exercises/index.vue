@@ -23,7 +23,7 @@ const byCategory = computed(() => {
   const groups: Record<string, any[]> = { strength: [], cardio: [] }
   for (const ex of filtered.value) {
     const key = ex.category === 'cardio' ? 'cardio' : 'strength'
-    groups[key].push(ex)
+    groups[key]!.push(ex)
   }
   return groups
 })

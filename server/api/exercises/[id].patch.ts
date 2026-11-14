@@ -1,10 +1,11 @@
 import { useSupabaseClient } from '../../utils/supabase'
+import { requireRouterParam } from '../../utils/params'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
   if (!session?.user) throw createError({ statusCode: 401 })
 
-  const id = getRouterParam(event, 'id')
+  const id = requireRouterParam(event, 'id')
   const body = await readBody(event)
 
   const name = body?.name?.trim()
@@ -15,7 +16,7 @@ export default defineEventHandler(async (event) => {
   // Own exercises and partner's (shared in the duo); global ones stay read-only
   const { data: me } = await supabase
     .from('users').select('partner_id').eq('id', session.user.id).single()
-  const userIds = [session.user.id, me?.partner_id].filter(Boolean)
+  const userIds = [session.user.id, me?.partner_id].filter((id): id is string => !!id)
 
   const { data, error } = await supabase
     .from('exercises')

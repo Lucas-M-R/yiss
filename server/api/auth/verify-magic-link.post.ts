@@ -1,3 +1,4 @@
+import { randomUUID } from 'uncrypto'
 import { useSupabaseClient } from '../../utils/supabase'
 
 export default defineEventHandler(async (event) => {
@@ -26,17 +27,30 @@ export default defineEventHandler(async (event) => {
   const { email } = data
 
   const supabase = useSupabaseClient()
-  const { data: persisted, error: upsertError } = await supabase
-    .from('users')
-    .upsert(
-      { email, display_name: email.split('@')[0], avatar_url: null },
-      { onConflict: 'email' }
-    )
-    .select('id, email, display_name, avatar_url, partner_id')
-    .single()
+  const columns = 'id, email, display_name, avatar_url, partner_id'
 
-  if (upsertError || !persisted) {
-    console.error('❌ Erreur Supabase upsert:', upsertError)
+  // Existing account (emails are unique case-insensitively): keep its name and avatar.
+  // ilike without wildcards, so "_" or "%" in an address match literally
+  const { data: existing, error: readError } = await supabase
+    .from('users')
+    .select(columns)
+    .ilike('email', email.trim().replace(/[\\%_]/g, c => `\\${c}`))
+    .maybeSingle()
+
+  let persisted = existing
+  if (!persisted && !readError) {
+    // users.id has no default (it holds the Google id for OAuth accounts): generate one
+    const { data: created, error: insertError } = await supabase
+      .from('users')
+      .insert({ id: randomUUID(), email: email.trim(), display_name: email.split('@')[0]!, avatar_url: null })
+      .select(columns)
+      .single()
+    if (insertError) console.error('❌ Erreur Supabase création utilisateur:', insertError)
+    persisted = created
+  }
+
+  if (!persisted) {
+    if (readError) console.error('❌ Erreur Supabase lecture utilisateur:', readError)
     throw createError({ statusCode: 500, message: 'Erreur lors de la création du compte' })
   }
 

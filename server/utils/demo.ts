@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '~~/shared/types/database.types'
 
 // Demo duo used to test Vercel preview deployments, where Google OAuth can't redirect.
 // Its data only belongs to these two ids, so it never mixes with real users' data.
@@ -15,7 +16,7 @@ export function isDemoMode() {
   return String(useRuntimeConfig().demoMode) === 'true'
 }
 
-type Db = SupabaseClient<any, any, any>
+type Db = SupabaseClient<Database>
 
 function check<T>({ data, error }: { data: T; error: { message: string } | null }, step: string): T {
   if (error) throw createError({ statusCode: 500, message: `Données démo (${step}) : ${error.message}` })

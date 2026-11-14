@@ -11,6 +11,7 @@ import {
   Tooltip,
   Legend,
   TimeScale,
+  type Point,
 } from 'chart.js'
 
 ChartJS.register(
@@ -63,7 +64,7 @@ interface UserMe {
 type Period = '7d' | '30d' | '3m' | '1y' | 'all'
 
 const selectedPeriod = ref<Period>('30d')
-const selectedExerciseId = ref<string | null>(null)
+const selectedExerciseId = ref<string | undefined>()
 const selectedUserId = ref<string | null>(null) // null = both
 
 const periodLabels: { value: Period; label: string }[] = [
@@ -205,8 +206,7 @@ const chartDefaults = {
 function buildChartData(rows: StatRow[], field: 'max_weight' | 'volume') {
   const byUser: Record<string, StatRow[]> = {}
   for (const row of rows) {
-    if (!byUser[row.user_id]) byUser[row.user_id] = []
-    byUser[row.user_id].push(row)
+    ;(byUser[row.user_id] ??= []).push(row)
   }
 
   const datasets = Object.entries(byUser).map(([userId, userRows]) => {
@@ -218,7 +218,8 @@ function buildChartData(rows: StatRow[], field: 'max_weight' | 'volume') {
 
     return {
       label,
-      data: sorted.map(r => ({ x: r.session_date, y: r[field] ?? 0 })),
+      // Category x axis: chart.js parses string x at runtime, but its Point type only allows numbers
+      data: sorted.map(r => ({ x: r.session_date, y: r[field] ?? 0 })) as unknown as Point[],
       borderColor: color,
       backgroundColor: bgColor,
       tension: 0.3,
@@ -237,8 +238,7 @@ const barChartData = computed(() => {
   const rows = stats.value ?? []
   const byUser: Record<string, StatRow[]> = {}
   for (const row of rows) {
-    if (!byUser[row.user_id]) byUser[row.user_id] = []
-    byUser[row.user_id].push(row)
+    ;(byUser[row.user_id] ??= []).push(row)
   }
 
   const datasets = Object.entries(byUser).map(([userId, userRows]) => {

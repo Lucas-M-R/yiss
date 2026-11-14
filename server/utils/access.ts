@@ -1,10 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '~~/shared/types/database.types'
 
 // A session is accessible to its creator, its participants and the creator's partner
 // (same rule as GET /api/sessions/:date, which shows the partner's session).
 export async function assertSessionExerciseAccess(
-  supabase: SupabaseClient,
-  sessionExerciseId: string | undefined,
+  supabase: SupabaseClient<Database>,
+  sessionExerciseId: string,
   userId: string
 ) {
   const { data: se } = await supabase
@@ -33,8 +34,8 @@ export async function assertSessionExerciseAccess(
 
 // Programs are readable by their owner, and by the owner's partner when shared
 export async function assertProgramAccess(
-  supabase: SupabaseClient,
-  programId: string | undefined,
+  supabase: SupabaseClient<Database>,
+  programId: string,
   userId: string,
   { write = false } = {}
 ) {
@@ -54,8 +55,8 @@ export async function assertProgramAccess(
 
 // Program days can only be edited by the owner of their program
 export async function assertProgramDayOwner(
-  supabase: SupabaseClient,
-  programDayId: string | undefined,
+  supabase: SupabaseClient<Database>,
+  programDayId: string,
   userId: string
 ) {
   const { data: day } = await supabase

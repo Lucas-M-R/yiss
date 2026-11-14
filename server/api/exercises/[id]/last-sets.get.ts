@@ -1,10 +1,11 @@
 import { useSupabaseClient } from '../../../utils/supabase'
+import { requireRouterParam } from '../../../utils/params'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
   if (!session?.user) throw createError({ statusCode: 401 })
 
-  const exerciseId = getRouterParam(event, 'id')
+  const exerciseId = requireRouterParam(event, 'id')
   const query = getQuery(event)
   const beforeDate = query.date as string | undefined
   const supabase = useSupabaseClient()

@@ -104,7 +104,7 @@ const saved = ref(new Set<string>())
 const showAddModal = ref(false)
 const allExercises = ref<Exercise[]>([])
 const exerciseSearch = ref('')
-const selectedExerciseId = ref<string | null>(null)
+const selectedExerciseId = ref<string | undefined>()
 const newSetsCount = ref(3)
 const addingExercise = ref(false)
 const creatingExercise = ref(false)
@@ -365,7 +365,7 @@ async function createExerciseFromSearch() {
 function closeAddModal() {
   showAddModal.value = false
   exerciseSearch.value = ''
-  selectedExerciseId.value = null
+  selectedExerciseId.value = undefined
   newSetsCount.value = 3
 }
 
@@ -841,8 +841,8 @@ function displayToSec(value: string): number | null {
   // Accept "MM:SS" or plain minutes
   if (value.includes(':')) {
     const [mStr, sStr] = value.split(':')
-    const m = parseInt(mStr, 10) || 0
-    const s = parseInt(sStr, 10) || 0
+    const m = parseInt(mStr ?? '', 10) || 0
+    const s = parseInt(sStr ?? '', 10) || 0
     return m * 60 + s
   }
   const minutes = parseFloat(value)
@@ -913,7 +913,7 @@ function onCardioInput(
         })
         idx = ex.sets.length - 1
       }
-      ex.sets[idx].duration_sec = sec
+      ex.sets[idx]!.duration_sec = sec
     }
   }
   scheduleSave(sessionExerciseId, setNumber, userId)

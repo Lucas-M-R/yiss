@@ -100,7 +100,7 @@ function validate(): boolean {
 
     const exercises = item.exercises as Record<string, unknown>[]
     for (let j = 0; j < exercises.length; j++) {
-      const ex = exercises[j]
+      const ex = exercises[j]!
       const exLabel = `${label}, exercice ${j + 1}`
 
       if (!ex.name || typeof ex.name !== 'string') {
@@ -364,11 +364,11 @@ const exampleJson = `[
           </div>
           <div class="bg-zinc-800 rounded-xl p-3 text-center col-span-1">
             <p class="text-[11px] font-semibold text-violet-300 leading-tight tabular-nums">
-              {{ formatDate(previewSummary.firstDate) }}
+              {{ formatDate(previewSummary.firstDate!) }}
             </p>
             <p class="text-[10px] text-zinc-500 mt-0.5">→</p>
             <p class="text-[11px] font-semibold text-violet-300 leading-tight tabular-nums">
-              {{ formatDate(previewSummary.lastDate) }}
+              {{ formatDate(previewSummary.lastDate!) }}
             </p>
           </div>
         </div>
