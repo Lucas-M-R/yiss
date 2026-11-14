@@ -394,6 +394,19 @@ async function addExercise() {
   }
 }
 
+// Exercise waiting for the delete confirmation
+const exerciseToDelete = ref<SessionExercise | null>(null)
+
+const exerciseToDeleteHasSets = computed(() =>
+  exerciseToDelete.value?.sets.some(s => s.reps != null || s.weight_kg != null || s.duration_sec != null) ?? false
+)
+
+function confirmRemoveExercise() {
+  const ex = exerciseToDelete.value
+  exerciseToDelete.value = null
+  if (ex) removeExercise(ex.id)
+}
+
 async function removeExercise(sessionExerciseId: string) {
   // Optimistic removal
   if (sessionData.value?.session) {
@@ -1078,7 +1091,7 @@ function onCardioInput(
                     <button
                       class="text-zinc-600 hover:text-red-400 transition-colors flex-shrink-0"
                       title="Supprimer l'exercice"
-                      @click="removeExercise(ex.id)"
+                      @click="exerciseToDelete = ex"
                     >
                       <UIcon name="i-lucide-x" class="text-xs" />
                     </button>
@@ -1311,6 +1324,28 @@ function onCardioInput(
     </div>
 
     <!-- Add exercise modal -->
+    <!-- Delete exercise confirmation -->
+    <UModal
+      :open="exerciseToDelete !== null"
+      title="Supprimer l'exercice ?"
+      @update:open="open => { if (!open) exerciseToDelete = null }"
+    >
+      <template #body>
+        <p class="text-sm text-zinc-300">
+          <span class="font-medium text-white">{{ exerciseToDelete?.exercise.name }}</span> sera retiré de la séance.
+        </p>
+        <p v-if="exerciseToDeleteHasSets" class="mt-2 text-sm text-amber-400">
+          Les séries déjà saisies{{ partner ? ` (les tiennes et celles de ${partner.display_name})` : '' }} seront perdues.
+        </p>
+      </template>
+      <template #footer>
+        <div class="flex gap-2 justify-end w-full">
+          <UButton variant="ghost" color="neutral" @click="exerciseToDelete = null">Annuler</UButton>
+          <UButton color="error" icon="i-lucide-trash-2" @click="confirmRemoveExercise">Supprimer</UButton>
+        </div>
+      </template>
+    </UModal>
+
     <UModal v-model:open="showAddModal" title="Ajouter un exercice">
       <template #body>
         <div class="space-y-4 p-1">
